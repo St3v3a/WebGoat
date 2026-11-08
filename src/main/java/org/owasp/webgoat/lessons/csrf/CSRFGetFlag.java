@@ -29,6 +29,12 @@ public class CSRFGetFlag {
   public Map<String, Object> invoke(HttpServletRequest req) {
 
     Map<String, Object> response = new HashMap<>();
+    if (!CsrfRequestValidator.isSameOrigin(req)) {
+      response.put("success", false);
+      response.put("message", "Request origin is not trusted");
+      response.put("flag", null);
+      return response;
+    }
 
     String host = (req.getHeader("host") == null) ? "NULL" : req.getHeader("host");
     String referer = (req.getHeader("referer") == null) ? "NULL" : req.getHeader("referer");

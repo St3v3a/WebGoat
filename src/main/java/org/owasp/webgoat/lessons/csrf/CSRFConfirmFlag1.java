@@ -5,8 +5,10 @@
 package org.owasp.webgoat.lessons.csrf;
 
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.failed;
+import static org.owasp.webgoat.container.assignments.AttackResultBuilder.informationMessage;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.success;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
 import org.owasp.webgoat.container.assignments.AttackResult;
@@ -30,9 +32,14 @@ public class CSRFConfirmFlag1 implements AssignmentEndpoint {
       path = "/csrf/confirm-flag-1",
       produces = {"application/json"})
   @ResponseBody
-  public AttackResult completed(String confirmFlagVal) {
+  public AttackResult completed(String confirmFlagVal, HttpServletRequest request) {
+    if (!CsrfRequestValidator.isSameOrigin(request)) {
+      return informationMessage(this).build();
+    }
     Object userSessionDataStr = userSessionData.getValue("csrf-get-success");
-    if (userSessionDataStr != null && confirmFlagVal.equals(userSessionDataStr.toString())) {
+    if (userSessionDataStr != null
+        && confirmFlagVal != null
+        && confirmFlagVal.equals(userSessionDataStr.toString())) {
       return success(this)
           .feedback("csrf-get-null-referer.success")
           .output("Correct, the flag was " + userSessionData.getValue("csrf-get-success"))

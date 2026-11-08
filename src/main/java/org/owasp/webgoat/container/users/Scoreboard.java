@@ -40,7 +40,6 @@ public class Scoreboard {
   @GetMapping("/scoreboard-data")
   public List<Ranking> getRankings() {
     return userRepository.findAll().stream()
-        .filter(user -> !user.getUsername().startsWith("csrf-"))
         .map(
             user ->
                 new Ranking(

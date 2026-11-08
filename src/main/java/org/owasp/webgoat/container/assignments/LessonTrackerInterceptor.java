@@ -44,7 +44,7 @@ public class LessonTrackerInterceptor implements ResponseBodyAdvice<Object> {
       Class<? extends HttpMessageConverter<?>> aClass,
       ServerHttpRequest serverHttpRequest,
       ServerHttpResponse serverHttpResponse) {
-    if (o instanceof AttackResult attackResult) {
+    if (o instanceof AttackResult attackResult && attackResult.isAttemptWasMade()) {
       trackProgress(attackResult);
     }
     return o;
@@ -53,7 +53,7 @@ public class LessonTrackerInterceptor implements ResponseBodyAdvice<Object> {
   private void trackProgress(AttackResult attackResult) {
     var user = (WebGoatUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     Assert.notNull(user, "User not found in SecurityContext");
-    var username = realUsername(user);
+    var username = user.getUsername();
 
     var userProgress = userProgressRepository.findByUser(username);
     if (userProgress == null) {
@@ -68,12 +68,5 @@ public class LessonTrackerInterceptor implements ResponseBodyAdvice<Object> {
       userProgress.assignmentFailed(lesson);
     }
     userProgressRepository.save(userProgress);
-  }
-
-  private String realUsername(WebGoatUser user) {
-    // maybe we shouldn't hard code this with just csrf- prefix for now it works
-    return user.getUsername().startsWith("csrf-")
-        ? user.getUsername().substring("csrf-".length())
-        : user.getUsername();
   }
 }

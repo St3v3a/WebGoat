@@ -5,6 +5,7 @@
 package org.owasp.webgoat.lessons.csrf;
 
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.failed;
+import static org.owasp.webgoat.container.assignments.AttackResultBuilder.informationMessage;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.success;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -43,6 +44,9 @@ public class CSRFFeedback implements AssignmentEndpoint {
       produces = {"application/json"})
   @ResponseBody
   public AttackResult completed(HttpServletRequest request, @RequestBody String feedback) {
+    if (!CsrfRequestValidator.isSameOrigin(request)) {
+      return informationMessage(this).build();
+    }
     try {
       objectMapper.enable(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES);
       objectMapper.enable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES);
@@ -68,7 +72,11 @@ public class CSRFFeedback implements AssignmentEndpoint {
 
   @PostMapping(path = "/csrf/feedback", produces = "application/json")
   @ResponseBody
-  public AttackResult flag(@RequestParam("confirmFlagVal") String flag) {
+  public AttackResult flag(
+      @RequestParam("confirmFlagVal") String flag, HttpServletRequest request) {
+    if (!CsrfRequestValidator.isSameOrigin(request)) {
+      return informationMessage(this).build();
+    }
     if (flag.equals(userSessionData.getValue("csrf-feedback"))) {
       return success(this).build();
     } else {
