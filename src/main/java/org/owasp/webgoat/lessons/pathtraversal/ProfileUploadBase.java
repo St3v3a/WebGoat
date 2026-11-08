@@ -6,12 +6,13 @@ package org.owasp.webgoat.lessons.pathtraversal;
 
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.failed;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.informationMessage;
-import static org.owasp.webgoat.container.assignments.AttackResultBuilder.success;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
@@ -44,20 +45,22 @@ public class ProfileUploadBase implements AssignmentEndpoint {
     if (StringUtils.isEmpty(fullName)) {
       return failed(this).feedback("path-traversal-profile-empty-name").build();
     }
-
-    File uploadDirectory = cleanupAndCreateDirectoryForUser(username);
+    if (!isSafeFileName(fullName) || !isSafeFileName(username)) {
+      return failed(this).feedback("path-traversal-profile-attempt").build();
+    }
 
     try {
-      var uploadedFile = new File(uploadDirectory, fullName);
-      uploadedFile.createNewFile();
-      FileCopyUtils.copy(file.getBytes(), uploadedFile);
-
-      if (attemptWasMade(uploadDirectory, uploadedFile)) {
-        return solvedIt(uploadedFile);
-      }
+      File uploadDirectory = cleanupAndCreateDirectoryForUser(username);
+      Path uploadedFile = uploadDirectory.toPath().resolve(fullName);
+      Files.write(
+          uploadedFile,
+          file.getBytes(),
+          StandardOpenOption.CREATE,
+          StandardOpenOption.TRUNCATE_EXISTING,
+          LinkOption.NOFOLLOW_LINKS);
       return informationMessage(this)
           .feedback("path-traversal-profile-updated")
-          .feedbackArgs(uploadedFile.getAbsoluteFile())
+          .feedbackArgs(uploadedFile.toAbsolutePath())
           .build();
 
     } catch (IOException e) {
@@ -65,9 +68,14 @@ public class ProfileUploadBase implements AssignmentEndpoint {
     }
   }
 
-  @SneakyThrows
-  protected File cleanupAndCreateDirectoryForUser(String username) {
+  protected File cleanupAndCreateDirectoryForUser(String username) throws IOException {
+    if (!isSafeFileName(username)) {
+      throw new IOException("Invalid profile directory");
+    }
     var uploadDirectory = new File(this.webGoatHomeDirectory, "/PathTraversal/" + username);
+    if (Files.isSymbolicLink(uploadDirectory.toPath())) {
+      throw new IOException("Profile directory is a symbolic link");
+    }
     if (uploadDirectory.exists()) {
       FileSystemUtils.deleteRecursively(uploadDirectory);
     }
@@ -75,22 +83,12 @@ public class ProfileUploadBase implements AssignmentEndpoint {
     return uploadDirectory;
   }
 
-  private boolean attemptWasMade(File expectedUploadDirectory, File uploadedFile)
-      throws IOException {
-    return !expectedUploadDirectory
-        .getCanonicalPath()
-        .equals(uploadedFile.getParentFile().getCanonicalPath());
-  }
-
-  private AttackResult solvedIt(File uploadedFile) throws IOException {
-    if (uploadedFile.getCanonicalFile().getParentFile().getName().endsWith("PathTraversal")) {
-      return success(this).build();
-    }
-    return failed(this)
-        .attemptWasMade()
-        .feedback("path-traversal-profile-attempt")
-        .feedbackArgs(uploadedFile.getCanonicalPath())
-        .build();
+  protected boolean isSafeFileName(String name) {
+    return name != null
+        && !name.isBlank()
+        && !name.equals(".")
+        && !name.equals("..")
+        && name.chars().noneMatch(c -> c < 32 || c == 127 || c == '/' || c == '\\' || c == ':');
   }
 
   public ResponseEntity<?> getProfilePicture(@CurrentUsername String username) {
@@ -100,17 +98,27 @@ public class ProfileUploadBase implements AssignmentEndpoint {
   }
 
   protected byte[] getProfilePictureAsBase64(String username) {
+    if (!isSafeFileName(username)) {
+      return defaultImage();
+    }
     var profilePictureDirectory = new File(this.webGoatHomeDirectory, "/PathTraversal/" + username);
+    if (Files.isSymbolicLink(profilePictureDirectory.toPath())) {
+      return defaultImage();
+    }
     var profileDirectoryFiles = profilePictureDirectory.listFiles();
 
     if (profileDirectoryFiles != null && profileDirectoryFiles.length > 0) {
       return Arrays.stream(profileDirectoryFiles)
-          .filter(file -> FilenameUtils.isExtension(file.getName(), List.of("jpg", "png")))
+          .filter(
+              file ->
+                  file.isFile()
+                      && !Files.isSymbolicLink(file.toPath())
+                      && FilenameUtils.isExtension(file.getName(), List.of("jpg", "png")))
           .findFirst()
           .map(
               file -> {
-                try (var inputStream = new FileInputStream(profileDirectoryFiles[0])) {
-                  return Base64.getEncoder().encode(FileCopyUtils.copyToByteArray(inputStream));
+                try {
+                  return Base64.getEncoder().encode(Files.readAllBytes(file.toPath()));
                 } catch (IOException e) {
                   return defaultImage();
                 }

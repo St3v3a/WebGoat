@@ -9,13 +9,11 @@ import static org.owasp.webgoat.container.assignments.AttackResultBuilder.succes
 import static org.springframework.http.MediaType.ALL_VALUE;
 import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
-import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import lombok.SneakyThrows;
@@ -25,7 +23,7 @@ import org.owasp.webgoat.container.assignments.AssignmentHints;
 import org.owasp.webgoat.container.assignments.AttackResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.FileCopyUtils;
+import org.springframework.util.FileSystemUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -55,7 +53,9 @@ public class ProfileZipSlip extends ProfileUploadBase {
   @ResponseBody
   public AttackResult uploadFileHandler(
       @RequestParam("uploadedFileZipSlip") MultipartFile file, @CurrentUsername String username) {
-    if (!file.getOriginalFilename().toLowerCase().endsWith(".zip")) {
+    if (!isSafeFileName(file.getOriginalFilename())
+        || !file.getOriginalFilename().toLowerCase().endsWith(".zip")
+        || !isSafeFileName(username)) {
       return failed(this).feedback("path-traversal-zip-slip.no-zip").build();
     } else {
       return processZipUpload(file, username);
@@ -64,26 +64,38 @@ public class ProfileZipSlip extends ProfileUploadBase {
 
   @SneakyThrows
   private AttackResult processZipUpload(MultipartFile file, String username) {
-    var tmpZipDirectory = Files.createTempDirectory(username);
+    var tmpZipDirectory = Files.createTempDirectory("webgoat-profile-zip-");
     cleanupAndCreateDirectoryForUser(username);
     var currentImage = getProfilePictureAsBase64(username);
 
     try {
       var uploadedZipFile = tmpZipDirectory.resolve(file.getOriginalFilename());
-      FileCopyUtils.copy(file.getBytes(), uploadedZipFile.toFile());
+      Files.write(uploadedZipFile, file.getBytes());
 
-      ZipFile zip = new ZipFile(uploadedZipFile.toFile());
-      Enumeration<? extends ZipEntry> entries = zip.entries();
-      while (entries.hasMoreElements()) {
-        ZipEntry e = entries.nextElement();
-        File f = new File(tmpZipDirectory.toFile(), e.getName());
-        InputStream is = zip.getInputStream(e);
-        Files.copy(is, f.toPath(), StandardCopyOption.REPLACE_EXISTING);
+      try (ZipFile zip = new ZipFile(uploadedZipFile.toFile())) {
+        var entries = zip.entries();
+        while (entries.hasMoreElements()) {
+          ZipEntry entry = entries.nextElement();
+          Path destination = tmpZipDirectory.resolve(entry.getName()).normalize();
+          if (!destination.startsWith(tmpZipDirectory) || entry.getName().contains("\\")) {
+            return failed(this).feedback("path-traversal-profile-attempt").build();
+          }
+          if (entry.isDirectory()) {
+            Files.createDirectories(destination);
+          } else {
+            Files.createDirectories(destination.getParent());
+            try (var input = zip.getInputStream(entry)) {
+              Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING);
+            }
+          }
+        }
       }
 
       return isSolved(currentImage, getProfilePictureAsBase64(username));
     } catch (IOException e) {
       return failed(this).output(e.getMessage()).build();
+    } finally {
+      FileSystemUtils.deleteRecursively(tmpZipDirectory);
     }
   }
 

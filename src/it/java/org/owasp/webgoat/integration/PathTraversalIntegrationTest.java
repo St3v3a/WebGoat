@@ -20,12 +20,10 @@ import java.util.zip.ZipOutputStream;
 import lombok.SneakyThrows;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.io.TempDir;
-import org.springframework.security.core.token.Sha512DigestUtils;
 
 class PathTraversalIT extends IntegrationTest {
 
@@ -64,7 +62,7 @@ class PathTraversalIT extends IntegrationTest {
             .statusCode(200)
             .extract()
             .path("lessonCompleted"),
-        CoreMatchers.is(true));
+        CoreMatchers.is(false));
   }
 
   private void assignment2() throws IOException {
@@ -80,7 +78,7 @@ class PathTraversalIT extends IntegrationTest {
             .statusCode(200)
             .extract()
             .path("lessonCompleted"),
-        CoreMatchers.is(true));
+        CoreMatchers.is(false));
   }
 
   private void assignment3() throws IOException {
@@ -98,7 +96,7 @@ class PathTraversalIT extends IntegrationTest {
             .statusCode(200)
             .extract()
             .path("lessonCompleted"),
-        CoreMatchers.is(true));
+        CoreMatchers.is(false));
   }
 
   private void assignment4() throws IOException {
@@ -110,13 +108,12 @@ class PathTraversalIT extends IntegrationTest {
         .cookie("JSESSIONID", getWebGoatCookie())
         .get(webGoatUrlConfig.url(uri))
         .then()
-        .statusCode(200)
-        .body(CoreMatchers.is("You found it submit the SHA-512 hash of your username as answer"));
+        .statusCode(400);
 
       checkAssignment(
               webGoatUrlConfig.url("PathTraversal/random"),
-        Map.of("secret", Sha512DigestUtils.shaHex(this.getUser())),
-        true);
+        Map.of("secret", "invalid"),
+        false);
   }
 
   private void assignment5() throws IOException {
@@ -144,13 +141,7 @@ class PathTraversalIT extends IntegrationTest {
             .statusCode(200)
             .extract()
             .path("lessonCompleted"),
-        CoreMatchers.is(true));
+        CoreMatchers.is(false));
   }
 
-  @AfterEach
-  void shutdown() {
-    // this will run only once after the list of dynamic tests has run, this is to test if the
-    // lesson is marked complete
-    checkResults("PathTraversal");
-  }
 }
