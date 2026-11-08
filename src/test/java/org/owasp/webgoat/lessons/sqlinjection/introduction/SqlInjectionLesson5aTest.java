@@ -54,8 +54,7 @@ public class SqlInjectionLesson5aTest extends LessonTest {
                 .param("operator", "OR")
                 .param("injection", "'1' = '1"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("lessonCompleted", is(true)))
-        .andExpect(jsonPath("$.feedback", containsString("You have succeed")))
+        .andExpect(jsonPath("lessonCompleted", is(false)))
         .andExpect(jsonPath("$.output").exists());
   }
 
@@ -70,12 +69,7 @@ public class SqlInjectionLesson5aTest extends LessonTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("lessonCompleted", is(false)))
         .andExpect(
-            jsonPath("$.feedback", containsString(messages.getMessage("assignment.not.solved"))))
-        .andExpect(
-            jsonPath(
-                "$.output",
-                is(
-                    "malformed string: '1''<br> Your query was: SELECT * FROM user_data WHERE"
-                        + " first_name = 'John' and last_name = 'Smith' OR '1' = '1''")));
+            jsonPath("$.feedback", containsString(messages.getMessage("sql-injection.5a.no.results"))))
+        .andExpect(jsonPath("$.output", containsString("last_name = ?")));
   }
 }
