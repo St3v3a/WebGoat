@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.hamcrest.CoreMatchers;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.owasp.webgoat.WithWebGoatUser;
@@ -34,7 +35,32 @@ class SimpleXXETest extends LessonTest {
                         + " SYSTEM \"file:///\"> ]><comment><text>&root;</text></comment>"))
         .andExpect(status().isOk())
         .andExpect(
-            jsonPath("$.feedback", CoreMatchers.is(messages.getMessage("assignment.solved"))));
+            jsonPath("$.feedback", CoreMatchers.is(messages.getMessage("assignment.not.solved"))));
+  }
+
+  @Test
+  void plainXmlCommentRemainsAvailable() throws Exception {
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/xxe/simple")
+                .content("<comment><text>A &amp; B</text></comment>"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
+
+    mockMvc
+        .perform(MockMvcRequestBuilders.get("/xxe/comments"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.[*].text").value(Matchers.hasItem("A & B")));
+  }
+
+  @Test
+  void directoryWordDoesNotCompleteAssignment() throws Exception {
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/xxe/simple")
+                .content("<comment><text>usr</text></comment>"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
   }
 
   @Test

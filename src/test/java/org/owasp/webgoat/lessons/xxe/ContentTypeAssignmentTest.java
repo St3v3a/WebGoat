@@ -54,7 +54,20 @@ class ContentTypeAssignmentTest extends LessonTest {
                         + " SYSTEM \"file:///\"> ]><comment><text>&root;</text></comment>"))
         .andExpect(status().isOk())
         .andExpect(
-            jsonPath("$.feedback", CoreMatchers.is(messages.getMessage("assignment.solved"))));
+            jsonPath(
+                "$.feedback",
+                CoreMatchers.is(messages.getMessage("xxe.content.type.feedback.xml"))));
+  }
+
+  @Test
+  void directoryWordDoesNotCompleteAssignment() throws Exception {
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/xxe/content-type")
+                .contentType(MediaType.APPLICATION_XML)
+                .content("<comment><text>usr</text></comment>"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
   }
 
   @Test

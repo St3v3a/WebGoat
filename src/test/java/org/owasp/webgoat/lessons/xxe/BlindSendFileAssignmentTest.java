@@ -16,11 +16,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import com.github.tomakehurst.wiremock.verification.LoggedRequest;
 import java.io.File;
-import java.util.List;
 import org.hamcrest.CoreMatchers;
-import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.owasp.webgoat.WithWebGoatUser;
@@ -52,13 +49,6 @@ class BlindSendFileAssignmentTest extends LessonTest {
     return new ObjectMapper().reader().readTree(response.getResponse().getContentAsString()).size();
   }
 
-  private void containsComment(String expected) throws Exception {
-    mockMvc
-        .perform(get("/xxe/comments").contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.[*].text").value(Matchers.hasItem(expected)));
-  }
-
   @Test
   void validCommentMustBeAdded() throws Exception {
     int nrOfComments = countComments();
@@ -88,6 +78,7 @@ class BlindSendFileAssignmentTest extends LessonTest {
   @Test
   @WithWebGoatUser
   void simpleXXEShouldNotWork() throws Exception {
+    int numberOfComments = countComments();
     File targetFile = new File(webGoatHomeDirectory, "/XXE/" + "test" + "/secret.txt");
     String content =
         "<?xml version=\"1.0\" standalone=\"yes\" ?><!DOCTYPE user [<!ENTITY root SYSTEM"
@@ -97,7 +88,7 @@ class BlindSendFileAssignmentTest extends LessonTest {
             MockMvcRequestBuilders.post("/xxe/blind")
                 .content(String.format(content, targetFile.toString())))
         .andExpect(status().isOk());
-    containsComment("Nice try, you need to send the file to WebWolf");
+    assertThat(countComments()).isEqualTo(numberOfComments);
   }
 
   @Test
@@ -165,25 +156,14 @@ class BlindSendFileAssignmentTest extends LessonTest {
   }
 
   private void performXXE(String xml) throws Exception {
-    // Call with XXE injection
+    int numberOfComments = countComments();
     mockMvc
         .perform(MockMvcRequestBuilders.post("/xxe/blind").content(xml))
         .andExpect(status().isOk())
         .andExpect(
             jsonPath("$.feedback", CoreMatchers.is(messages.getMessage("assignment.not.solved"))));
 
-    List<LoggedRequest> requests =
-        webwolfServer.findAll(getRequestedFor(urlMatching("/landing.*")));
-    assertThat(requests.size()).isEqualTo(1);
-    String text = requests.get(0).getQueryParams().get("text").firstValue();
-
-    // Call with retrieved text
-    mockMvc
-        .perform(
-            MockMvcRequestBuilders.post("/xxe/blind")
-                .content("<comment><text>" + text + "</text></comment>"))
-        .andExpect(status().isOk())
-        .andExpect(
-            jsonPath("$.feedback", CoreMatchers.is(messages.getMessage("assignment.solved"))));
+    assertThat(webwolfServer.findAll(getRequestedFor(urlMatching("/landing.*")))).isEmpty();
+    assertThat(countComments()).isEqualTo(numberOfComments);
   }
 }

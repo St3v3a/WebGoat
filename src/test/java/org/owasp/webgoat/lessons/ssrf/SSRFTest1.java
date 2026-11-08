@@ -4,6 +4,7 @@
  */
 package org.owasp.webgoat.lessons.ssrf;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,7 +39,8 @@ public class SSRFTest1 extends LessonTest {
     mockMvc
         .perform(MockMvcRequestBuilders.post("/SSRF/task1").param("url", "images/jerry.png"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.lessonCompleted", is(true)));
+        .andExpect(jsonPath("$.lessonCompleted", is(false)))
+        .andExpect(jsonPath("$.output", containsString("cat.jpg")));
   }
 
   @Test
