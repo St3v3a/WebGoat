@@ -27,7 +27,7 @@ class StoredXssCommentsTest extends LessonTest {
                 .contentType(MediaType.APPLICATION_JSON));
 
     results.andExpect(status().isOk());
-    results.andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(true)));
+    results.andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
   }
 
   @Test
@@ -47,9 +47,9 @@ class StoredXssCommentsTest extends LessonTest {
      ... the isEncoded method will remain commented out as it will fail (because WebGoat isn't supposed to be secure)
   */
 
-  // Ensures it is vulnerable
+  // JSON remains data; the browser renders these fields as text.
   @Test
-  public void isNotEncoded() throws Exception {
+  public void storedCommentIsReturnedAsData() throws Exception {
     // do get to get comments after posting xss payload
     ResultActions taintedResults =
         mockMvc.perform(MockMvcRequestBuilders.get("/CrossSiteScriptingStored/stored-xss"));

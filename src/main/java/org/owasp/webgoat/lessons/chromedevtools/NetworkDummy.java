@@ -33,7 +33,7 @@ public class NetworkDummy implements AssignmentEndpoint {
   @PostMapping("/ChromeDevTools/dummy")
   @ResponseBody
   public AttackResult completed(@RequestParam String successMessage) {
-    String answer = (String) lessonSession.getValue("randValue");
+    String answer = (String) lessonSession.getValue("chrome-devtools-rand-value");
 
     if (successMessage != null && successMessage.equals(answer)) {
       return success(this).feedback("xss-dom-message-success").build();
