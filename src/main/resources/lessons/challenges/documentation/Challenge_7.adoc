@@ -1,1 +1,2 @@
-Try to reset the password for admin.
+Request a reset link for your own account. Links are delivered to the
+recipient's mailbox, expire, and can be opened only once.

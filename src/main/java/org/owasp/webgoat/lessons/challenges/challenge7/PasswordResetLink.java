@@ -4,34 +4,21 @@
  */
 package org.owasp.webgoat.lessons.challenges.challenge7;
 
-import java.util.Random;
+import java.security.SecureRandom;
+import java.util.HexFormat;
 
 /**
- * WARNING: DO NOT CHANGE FILE WITHOUT CHANGING .git contents
- *
  * @author nbaars
  * @since 8/17/17.
  */
 public class PasswordResetLink {
 
-  public String createPasswordReset(String username, String key) {
-    Random random = new Random();
-    if (username.equalsIgnoreCase("admin")) {
-      // Admin has a fix reset link
-      random.setSeed(key.length());
-    }
-    return scramble(random, scramble(random, scramble(random, MD5.getHashString(username))));
-  }
+  private static final SecureRandom RANDOM = new SecureRandom();
 
-  public static String scramble(Random random, String inputString) {
-    char[] a = inputString.toCharArray();
-    for (int i = 0; i < a.length; i++) {
-      int j = random.nextInt(a.length);
-      char temp = a[i];
-      a[i] = a[j];
-      a[j] = temp;
-    }
-    return new String(a);
+  public String createPasswordReset(String username, String key) {
+    byte[] token = new byte[32];
+    RANDOM.nextBytes(token);
+    return HexFormat.of().formatHex(token);
   }
 
   public static void main(String[] args) {

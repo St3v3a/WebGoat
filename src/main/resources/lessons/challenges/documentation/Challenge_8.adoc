@@ -1,1 +1,2 @@
-Can you still vote?
+GET and HEAD requests do not change vote totals. Inspect the published
+counts and average to see the current results.

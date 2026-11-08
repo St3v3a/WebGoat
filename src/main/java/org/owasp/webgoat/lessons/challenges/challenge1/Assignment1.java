@@ -8,9 +8,12 @@ import static org.owasp.webgoat.container.assignments.AttackResultBuilder.failed
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.success;
 import static org.owasp.webgoat.lessons.challenges.SolutionConstants.PASSWORD;
 
+import java.util.UUID;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AttackResult;
 import org.owasp.webgoat.lessons.challenges.Flags;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -20,20 +23,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class Assignment1 implements AssignmentEndpoint {
 
   private final Flags flags;
+  private final String adminPassword;
 
-  public Assignment1(Flags flags) {
+  public Assignment1(
+      Flags flags, @Value("${webgoat.challenge.admin-password:}") String configuredPassword) {
     this.flags = flags;
+    this.adminPassword =
+        StringUtils.hasText(configuredPassword)
+            ? configuredPassword
+            : PASSWORD.replace("1234", UUID.randomUUID().toString().replace("-", ""));
   }
 
   @PostMapping("/challenge/1")
   @ResponseBody
   public AttackResult completed(@RequestParam String username, @RequestParam String password) {
     boolean ipAddressKnown = true;
-    boolean passwordCorrect =
-        "admin".equals(username)
-            && PASSWORD
-                .replace("1234", String.format("%04d", ImageServlet.PINCODE))
-                .equals(password);
+    boolean passwordCorrect = "admin".equals(username) && adminPassword.equals(password);
     if (passwordCorrect && ipAddressKnown) {
       return success(this).feedback("challenge.solved").feedbackArgs(flags.getFlag(1)).build();
     } else if (passwordCorrect) {
