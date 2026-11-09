@@ -117,11 +117,34 @@ public class GeneralLessonIntegrationTest extends IntegrationTest {
   @Test
   public void insecureLogin() {
     startLesson("InsecureLogin");
+    var issued =
+        RestAssured.given()
+            .relaxedHTTPSValidation()
+            .cookie("JSESSIONID", getWebGoatCookie())
+            .post(webGoatUrlConfig.url("InsecureLogin/credentials"))
+            .then()
+            .statusCode(200)
+            .extract()
+            .jsonPath();
+    String demoUser = issued.getString("username");
+    String demoPassword = issued.getString("password");
+    RestAssured.given()
+        .relaxedHTTPSValidation()
+        .cookie("JSESSIONID", getWebGoatCookie())
+        .contentType(ContentType.JSON)
+        .body(Map.of("username", demoUser, "password", demoPassword))
+        .post(webGoatUrlConfig.url("InsecureLogin/login"))
+        .then()
+        .statusCode(202);
+
     Map<String, Object> params = new HashMap<>();
-    params.clear();
     params.put("username", "CaptainJack");
     params.put("password", "BlackPearl");
-      checkAssignment(webGoatUrlConfig.url("InsecureLogin/task"), params, true);
+    checkAssignment(webGoatUrlConfig.url("InsecureLogin/task"), params, false);
+    params.put("username", demoUser);
+    params.put("password", demoPassword);
+    checkAssignment(webGoatUrlConfig.url("InsecureLogin/task"), params, true);
+    checkAssignment(webGoatUrlConfig.url("InsecureLogin/task"), params, false);
     checkResults("InsecureLogin");
   }
 
