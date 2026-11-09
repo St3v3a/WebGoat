@@ -9,8 +9,11 @@ import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 import io.restassured.RestAssured;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 import org.assertj.core.api.Assertions;
+import org.jsoup.Jsoup;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
@@ -129,12 +132,18 @@ public class PasswordResetLessonIntegrationTest extends IntegrationTest {
             .response()
             .getBody()
             .asString();
-    int startIndex = responseBody.lastIndexOf("/PasswordReset/reset/reset-password/");
-    var link =
-        responseBody.substring(
-            startIndex + "/PasswordReset/reset/reset-password/".length(),
-            responseBody.indexOf(",", startIndex) - 1);
-    return link;
+    String traceText = Jsoup.parse(responseBody).select(".card-body pre").text();
+    Matcher links =
+        Pattern.compile("/PasswordReset/reset/reset-password/([0-9a-fA-F-]{36})")
+            .matcher(traceText);
+    String latestLink = null;
+    while (links.find()) {
+      latestLink = links.group(1);
+    }
+    if (latestLink == null) {
+      throw new IllegalStateException("No password reset link found in WebWolf requests");
+    }
+    return latestLink;
   }
 
   private void clickForgotEmailLink(String user) {
