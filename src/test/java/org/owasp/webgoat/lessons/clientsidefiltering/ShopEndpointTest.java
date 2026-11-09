@@ -30,13 +30,13 @@ public class ShopEndpointTest extends LessonTest {
   }
 
   @Test
-  public void getSuperCoupon() throws Exception {
+  public void revokedCouponIsNotAvailable() throws Exception {
     mockMvc
         .perform(
             MockMvcRequestBuilders.get(
                 "/clientSideFiltering/challenge-store/coupons/" + SUPER_COUPON_CODE))
-        .andExpect(jsonPath("$.code", CoreMatchers.is(SUPER_COUPON_CODE)))
-        .andExpect(jsonPath("$.discount", CoreMatchers.is(100)));
+        .andExpect(jsonPath("$.code", CoreMatchers.is("no")))
+        .andExpect(jsonPath("$.discount", CoreMatchers.is(0)));
   }
 
   @Test
@@ -58,9 +58,9 @@ public class ShopEndpointTest extends LessonTest {
   }
 
   @Test
-  public void fetchAllTheCouponsShouldContainGetItForFree() throws Exception {
+  public void publicCouponsExcludeRevokedCode() throws Exception {
     mockMvc
         .perform(MockMvcRequestBuilders.get("/clientSideFiltering/challenge-store/coupons"))
-        .andExpect(jsonPath("$.codes[3].code", is("get_it_for_free")));
+        .andExpect(jsonPath("$.codes.length()", is(3)));
   }
 }

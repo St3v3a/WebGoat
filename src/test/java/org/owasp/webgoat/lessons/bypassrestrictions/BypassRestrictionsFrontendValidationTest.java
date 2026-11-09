@@ -43,7 +43,7 @@ public class BypassRestrictionsFrontendValidationTest extends LessonTest {
   }
 
   @Test
-  void bypassAllFieldShouldPass() throws Exception {
+  void bypassedFieldsAreRejected() throws Exception {
     mockMvc
         .perform(
             MockMvcRequestBuilders.post("/BypassRestrictions/frontendValidation")
@@ -56,7 +56,7 @@ public class BypassRestrictionsFrontendValidationTest extends LessonTest {
                 .param("field7", "301-604-4882$$")
                 .param("error", "0"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.lessonCompleted", is(true)));
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
   }
 
   @Test
@@ -74,5 +74,22 @@ public class BypassRestrictionsFrontendValidationTest extends LessonTest {
                 .param("error", "0"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.lessonCompleted", is(false)));
+  }
+
+  @Test
+  void validFieldsPassServerValidation() throws Exception {
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/BypassRestrictions/frontendValidation")
+                .param("field1", "abc")
+                .param("field2", "123")
+                .param("field3", "abc ABC 123")
+                .param("field4", "seven")
+                .param("field5", "01101")
+                .param("field6", "90210-1111")
+                .param("field7", "301-604-4882")
+                .param("error", "0"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", is(true)));
   }
 }
