@@ -9,5 +9,5 @@ Logging is very important for modern systems. We use it for various reasons:
 == Goals
 * The user should have a basic understanding of logging and where to log for.
 * The user understands the risks of log spoofing and leaking log information.
-* The user will be able to do a simple log spoofing attack.
+* The user can verify that line breaks and markup do not forge a log entry.
 * The user will be able to tell the basic risks involved in logging.
