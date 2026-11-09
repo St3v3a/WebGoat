@@ -11,6 +11,7 @@ import static org.owasp.webgoat.lessons.missingac.MissingFunctionAC.PASSWORD_SAL
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
 import org.owasp.webgoat.container.assignments.AttackResult;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -35,7 +36,10 @@ public class MissingFunctionACYourHash implements AssignmentEndpoint {
       path = "/access-control/user-hash",
       produces = {"application/json"})
   @ResponseBody
-  public AttackResult simple(String userHash) {
+  public AttackResult simple(String userHash, Authentication authentication) {
+    if (!MissingFunctionACAuthorization.isAdmin(authentication)) {
+      return failed(this).build();
+    }
     User user = userRepository.findByUsername("Jerry");
     DisplayUser displayUser = new DisplayUser(user, PASSWORD_SALT_SIMPLE);
     if (userHash.equals(displayUser.getUserHash())) {

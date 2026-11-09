@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.owasp.webgoat.container.CurrentUsername;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.server.ResponseStatusException;
 
 /** Created by jason on 1/5/17. */
 @Controller
@@ -31,7 +32,10 @@ public class MissingFunctionACUsers {
   private final MissingAccessControlUserRepository userRepository;
 
   @GetMapping(path = {"access-control/users"})
-  public ModelAndView listUsers() {
+  public ModelAndView listUsers(Authentication authentication) {
+    if (!MissingFunctionACAuthorization.isAdmin(authentication)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+    }
 
     ModelAndView model = new ModelAndView();
     model.setViewName("list_users");
@@ -51,7 +55,10 @@ public class MissingFunctionACUsers {
       path = {"access-control/users"},
       consumes = "application/json")
   @ResponseBody
-  public ResponseEntity<List<DisplayUser>> usersService() {
+  public ResponseEntity<List<DisplayUser>> usersService(Authentication authentication) {
+    if (!MissingFunctionACAuthorization.isAdmin(authentication)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
     return ResponseEntity.ok(
         userRepository.findAllUsers().stream()
             .map(user -> new DisplayUser(user, PASSWORD_SALT_SIMPLE))
@@ -62,9 +69,8 @@ public class MissingFunctionACUsers {
       path = {"access-control/users-admin-fix"},
       consumes = "application/json")
   @ResponseBody
-  public ResponseEntity<List<DisplayUser>> usersFixed(@CurrentUsername String username) {
-    var currentUser = userRepository.findByUsername(username);
-    if (currentUser != null && currentUser.isAdmin()) {
+  public ResponseEntity<List<DisplayUser>> usersFixed(Authentication authentication) {
+    if (MissingFunctionACAuthorization.isAdmin(authentication)) {
       return ResponseEntity.ok(
           userRepository.findAllUsers().stream()
               .map(user -> new DisplayUser(user, PASSWORD_SALT_ADMIN))
@@ -78,7 +84,10 @@ public class MissingFunctionACUsers {
       consumes = "application/json",
       produces = "application/json")
   @ResponseBody
-  public User addUser(@RequestBody User newUser) {
+  public User addUser(@RequestBody User newUser, Authentication authentication) {
+    if (!MissingFunctionACAuthorization.isAdmin(authentication)) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+    }
     try {
       userRepository.save(newUser);
       return newUser;

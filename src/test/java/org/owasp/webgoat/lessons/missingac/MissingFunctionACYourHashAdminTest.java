@@ -12,10 +12,21 @@ import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.owasp.webgoat.container.plugins.LessonTest;
+import org.owasp.webgoat.container.users.WebGoatUser;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.util.List;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 class MissingFunctionACYourHashAdminTest extends LessonTest {
+
+  private static final UsernamePasswordAuthenticationToken ADMIN =
+      new UsernamePasswordAuthenticationToken(
+          "admin", "", List.of(new SimpleGrantedAuthority(WebGoatUser.ROLE_ADMIN)));
+  private static final UsernamePasswordAuthenticationToken PLAYER =
+      new UsernamePasswordAuthenticationToken(
+          "webgoat", "", List.of(new SimpleGrantedAuthority(WebGoatUser.ROLE_USER)));
 
   @BeforeEach
   public void setup() {
@@ -30,6 +41,7 @@ class MissingFunctionACYourHashAdminTest extends LessonTest {
     mockMvc
         .perform(
             MockMvcRequestBuilders.post("/access-control/user-hash-fix")
+                .principal(ADMIN)
                 .param("userHash", userHash))
         .andExpect(status().isOk())
         .andExpect(
@@ -44,7 +56,23 @@ class MissingFunctionACYourHashAdminTest extends LessonTest {
   void wrongUserHash() throws Exception {
     mockMvc
         .perform(
-            MockMvcRequestBuilders.post("/access-control/user-hash-fix").param("userHash", "wrong"))
+            MockMvcRequestBuilders.post("/access-control/user-hash-fix")
+                .principal(ADMIN)
+                .param("userHash", "wrong"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
+  }
+
+  @Test
+  void correctHashDoesNotAuthorizePlayer() throws Exception {
+    var userHash =
+        new DisplayUser(new User("Jerry", "doesnotreallymatter", true), PASSWORD_SALT_ADMIN)
+            .getUserHash();
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/access-control/user-hash-fix")
+                .principal(PLAYER)
+                .param("userHash", userHash))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
   }

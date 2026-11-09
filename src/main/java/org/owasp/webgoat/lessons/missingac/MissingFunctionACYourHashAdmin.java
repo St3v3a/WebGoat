@@ -11,6 +11,7 @@ import static org.owasp.webgoat.lessons.missingac.MissingFunctionAC.PASSWORD_SAL
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
 import org.owasp.webgoat.container.assignments.AttackResult;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -38,7 +39,10 @@ public class MissingFunctionACYourHashAdmin implements AssignmentEndpoint {
       path = "/access-control/user-hash-fix",
       produces = {"application/json"})
   @ResponseBody
-  public AttackResult admin(String userHash) {
+  public AttackResult admin(String userHash, Authentication authentication) {
+    if (!MissingFunctionACAuthorization.isAdmin(authentication)) {
+      return failed(this).feedback("access-control.hash.close").build();
+    }
     // current user should be in the DB
     // if not admin then return 403
 
