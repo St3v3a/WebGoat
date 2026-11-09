@@ -5,21 +5,24 @@
 package org.owasp.webgoat.lessons.spoofcookie.encoders;
 
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
-import org.apache.commons.lang3.RandomStringUtils;
-import org.springframework.security.crypto.codec.Hex;
-
-/***
- *
- * @author Angel Olle Blazquez
- *
- */
+import java.util.Locale;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 public class EncDec {
 
-  // PoC: weak encoding method
+  private static final byte[] KEY = new byte[32];
+  private static final String PREFIX = "v1:";
+  private static final int MAC_LENGTH = 32;
 
-  private static final String SALT = RandomStringUtils.randomAlphabetic(10);
+  static {
+    new SecureRandom().nextBytes(KEY);
+  }
 
   private EncDec() {}
 
@@ -27,44 +30,41 @@ public class EncDec {
     if (value == null) {
       return null;
     }
-
-    String encoded = value.toLowerCase() + SALT;
-    encoded = revert(encoded);
-    encoded = hexEncode(encoded);
-    return base64Encode(encoded);
+    byte[] message = (PREFIX + value.toLowerCase(Locale.ROOT)).getBytes(StandardCharsets.UTF_8);
+    byte[] signature = sign(message);
+    byte[] cookie = Arrays.copyOf(message, message.length + signature.length);
+    System.arraycopy(signature, 0, cookie, message.length, signature.length);
+    return Base64.getEncoder().encodeToString(cookie);
   }
 
   public static String decode(final String encodedValue) throws IllegalArgumentException {
     if (encodedValue == null) {
       return null;
     }
-
-    String decoded = base64Decode(encodedValue);
-    decoded = hexDecode(decoded);
-    decoded = revert(decoded);
-    return decoded.substring(0, decoded.length() - SALT.length());
+    byte[] cookie = Base64.getDecoder().decode(encodedValue);
+    if (cookie.length <= PREFIX.length() + MAC_LENGTH || cookie.length > 512) {
+      throw new IllegalArgumentException("Invalid authentication cookie");
+    }
+    int messageLength = cookie.length - MAC_LENGTH;
+    byte[] message = Arrays.copyOf(cookie, messageLength);
+    byte[] signature = Arrays.copyOfRange(cookie, messageLength, cookie.length);
+    if (!MessageDigest.isEqual(sign(message), signature)) {
+      throw new IllegalArgumentException("Invalid authentication cookie");
+    }
+    String value = new String(message, StandardCharsets.UTF_8);
+    if (!value.startsWith(PREFIX) || value.length() == PREFIX.length()) {
+      throw new IllegalArgumentException("Invalid authentication cookie");
+    }
+    return value.substring(PREFIX.length());
   }
 
-  private static String revert(final String value) {
-    return new StringBuilder(value).reverse().toString();
-  }
-
-  private static String hexEncode(final String value) {
-    char[] encoded = Hex.encode(value.getBytes(StandardCharsets.UTF_8));
-    return new String(encoded);
-  }
-
-  private static String hexDecode(final String value) {
-    byte[] decoded = Hex.decode(value);
-    return new String(decoded);
-  }
-
-  private static String base64Encode(final String value) {
-    return Base64.getEncoder().encodeToString(value.getBytes());
-  }
-
-  private static String base64Decode(final String value) {
-    byte[] decoded = Base64.getDecoder().decode(value.getBytes());
-    return new String(decoded);
+  private static byte[] sign(byte[] message) {
+    try {
+      Mac mac = Mac.getInstance("HmacSHA256");
+      mac.init(new SecretKeySpec(KEY, "HmacSHA256"));
+      return mac.doFinal(message);
+    } catch (GeneralSecurityException e) {
+      throw new IllegalStateException("Authentication cookie signing is unavailable", e);
+    }
   }
 }

@@ -2,6 +2,8 @@
 
 == Solution
 
+The steps below describe the original vulnerable cookie format. The hardened event build rejects these forged values.
+
 Some standard Linux tools have been used on this solution; other kind of tools -like online tools- can be used and the same results should be obtained.
 
 === Analysis and reversing

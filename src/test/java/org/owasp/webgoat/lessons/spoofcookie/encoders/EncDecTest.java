@@ -5,65 +5,36 @@
 package org.owasp.webgoat.lessons.spoofcookie.encoders;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.stream.Stream;
-import org.junit.jupiter.api.DisplayName;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-
-/***
- *
- * @author Angel Olle Blazquez
- *
- */
 
 class EncDecTest {
 
-  @ParameterizedTest
-  @DisplayName("Encode test")
-  @MethodSource("providedForEncValues")
-  void testEncode(String decoded, String encoded) {
-    String result = EncDec.encode(decoded);
-
-    assertThat(result.endsWith(encoded)).isTrue();
-  }
-
-  @ParameterizedTest
-  @DisplayName("Decode test")
-  @MethodSource("providedForDecValues")
-  void testDecode(String decoded, String encoded) {
-    String result = EncDec.decode(encoded);
-
-    assertThat(decoded, is(result));
+  @Test
+  void issuedCookieRoundTrips() {
+    for (String username : new String[] {"webgoat", "admin", "tom"}) {
+      assertThat(EncDec.decode(EncDec.encode(username))).isEqualTo(username);
+    }
+    assertThat(EncDec.decode(EncDec.encode("WEBGOAT"))).isEqualTo("webgoat");
   }
 
   @Test
-  @DisplayName("null encode test")
-  void testNullEncode() {
+  void rejectsLegacyAndTamperedCookies() {
+    assertThatThrownBy(() -> EncDec.decode("NjI2MTcwNGI3YTQxNGE1OTU2NzQ2ZDZmNzQ="))
+        .isInstanceOf(IllegalArgumentException.class);
+    byte[] changed = Base64.getDecoder().decode(EncDec.encode("webgoat"));
+    changed[4] ^= 1;
+    assertThatThrownBy(() -> EncDec.decode(Base64.getEncoder().encodeToString(changed)))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> EncDec.decode("not-base64!"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void preservesNullContract() {
     assertThat(EncDec.encode(null)).isNull();
-  }
-
-  @Test
-  @DisplayName("null decode test")
-  void testNullDecode() {
     assertThat(EncDec.decode(null)).isNull();
-  }
-
-  private static Stream<Arguments> providedForEncValues() {
-    return Stream.of(
-        Arguments.of("webgoat", "YxNmY2NzYyNjU3Nw=="),
-        Arguments.of("admin", "2ZTY5NmQ2NDYx"),
-        Arguments.of("tom", "2ZDZmNzQ="));
-  }
-
-  private static Stream<Arguments> providedForDecValues() {
-    return Stream.of(
-        Arguments.of("webgoat", "NjI2MTcwNGI3YTQxNGE1OTU2NzQ3NDYxNmY2NzYyNjU3Nw=="),
-        Arguments.of("admin", "NjI2MTcwNGI3YTQxNGE1OTU2NzQ2ZTY5NmQ2NDYx"),
-        Arguments.of("tom", "NjI2MTcwNGI3YTQxNGE1OTU2NzQ2ZDZmNzQ="));
   }
 }

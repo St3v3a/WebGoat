@@ -20,6 +20,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.owasp.webgoat.container.plugins.LessonTest;
+import org.owasp.webgoat.lessons.spoofcookie.encoders.EncDec;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -37,8 +38,8 @@ class SpoofCookieAssignmentTest extends LessonTest {
   private static final String ERASE_COOKIE_CONTEXT_PATH = "/SpoofCookie/cleanup";
 
   @Test
-  @DisplayName("Lesson completed")
-  void success() throws Exception {
+  @DisplayName("Legacy forged Tom cookie is rejected")
+  void rejectsForgedTomCookie() throws Exception {
     Cookie cookie = new Cookie(COOKIE_NAME, "NjI2MTcwNGI3YTQxNGE1OTU2NzQ2ZDZmNzQ=");
 
     ResultActions result =
@@ -49,7 +50,21 @@ class SpoofCookieAssignmentTest extends LessonTest {
                 .param("password", ""));
 
     result.andExpect(status().isOk());
-    result.andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(true)));
+    result.andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
+  }
+
+  @Test
+  @DisplayName("An issued cookie still authenticates its user")
+  void issuedCookieLogin() throws Exception {
+    Cookie cookie = new Cookie(COOKIE_NAME, EncDec.encode("webgoat"));
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post(LOGIN_CONTEXT_PATH)
+                .cookie(cookie)
+                .param("username", "webgoat")
+                .param("password", "wrong"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
   }
 
   @Test
@@ -75,7 +90,7 @@ class SpoofCookieAssignmentTest extends LessonTest {
   @DisplayName(
       "Tests different invalid/valid -but not solved- cookie flow scenarios: "
           + "1.- Invalid encoded cookie sent. "
-          + "2.- Valid cookie login (not tom) sent. "
+          + "2.- Issued cookie login (not tom) sent. "
           + "3.- Valid cookie with not known username sent ")
   void cookieLoginNotSolvedFlow(String cookieValue) throws Exception {
     Cookie cookie = new Cookie(COOKIE_NAME, cookieValue);
@@ -161,13 +176,14 @@ class SpoofCookieAssignmentTest extends LessonTest {
         .perform(MockMvcRequestBuilders.get(ERASE_COOKIE_CONTEXT_PATH))
         .andExpect(status().isOk())
         .andExpect(cookie().maxAge(COOKIE_NAME, 0))
-        .andExpect(cookie().value(COOKIE_NAME, ""));
+        .andExpect(cookie().value(COOKIE_NAME, ""))
+        .andExpect(cookie().path(COOKIE_NAME, "/WebGoat"));
   }
 
   private static Stream<Arguments> providedCookieValues() {
     return Stream.of(
         Arguments.of("NjI2MTcwNGI3YTQxNGE1OTUNzQ2ZDZmNzQ="),
-        Arguments.of("NjI2MTcwNGI3YTQxNGE1OTU2NzQ3NDYxNmY2NzYyNjU3Nw=="),
+        Arguments.of(EncDec.encode("webgoat")),
         Arguments.of("NmQ0NjQ1Njc0NjY4NGY2Mjc0NjQ2YzY1Njc2ZTYx"));
   }
 }

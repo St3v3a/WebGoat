@@ -1,6 +1,7 @@
 = Spoofing an Authentication Cookie
 
-Attempt to bypass the authentication mechanism by spoofing an authentication cookie.
+Try modifying an authentication cookie and observe whether the server rejects it.
+This event build verifies the cookie's integrity; the historical spoofing walkthrough describes the original vulnerable version.
 
 *Notes about the login system*
 
@@ -27,4 +28,4 @@ Known credentials:
 
 *Goal*
 
-Once you have a clear understanding of how the authentication cookie is generated, attempt to _spoof_ the cookie and log in as Tom.
+Confirm that an issued cookie still works for its user and that a forged cookie cannot log in as Tom.
