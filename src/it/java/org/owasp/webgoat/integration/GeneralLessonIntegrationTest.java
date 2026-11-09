@@ -140,7 +140,13 @@ public class GeneralLessonIntegrationTest extends IntegrationTest {
     params.put("secQuestion3", "Main");
     params.put("jsEnabled", "1");
     params.put("verifyMethod", "SEC_QUESTIONS");
-    params.put("userId", "12309746");
+    params.put("userId", "1223445");
+      checkAssignment(webGoatUrlConfig.url("auth-bypass/verify-account"), params, false);
+    params.clear();
+    params.put("secQuestion0", "Dr. Watson");
+    params.put("secQuestion1", "Baker Street");
+    params.put("verifyMethod", "SEC_QUESTIONS");
+    params.put("userId", "1223445");
       checkAssignment(webGoatUrlConfig.url("auth-bypass/verify-account"), params, true);
     checkResults("AuthBypass");
 
@@ -206,7 +212,13 @@ public class GeneralLessonIntegrationTest extends IntegrationTest {
     params.put("secQuestion3", "Main");
     params.put("jsEnabled", "1");
     params.put("verifyMethod", "SEC_QUESTIONS");
-    params.put("userId", "12309746");
+    params.put("userId", "1223445");
+      checkAssignment(webGoatUrlConfig.url("auth-bypass/verify-account"), params, false);
+    params.clear();
+    params.put("secQuestion0", "Dr. Watson");
+    params.put("secQuestion1", "Baker Street");
+    params.put("verifyMethod", "SEC_QUESTIONS");
+    params.put("userId", "1223445");
       checkAssignment(webGoatUrlConfig.url("auth-bypass/verify-account"), params, true);
     checkResults("AuthBypass");
   }

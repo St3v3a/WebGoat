@@ -4,41 +4,56 @@
  */
 package org.owasp.webgoat.lessons.authbypass;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
 import org.junit.jupiter.api.Test;
-import org.owasp.webgoat.container.plugins.LessonTest;
+import org.owasp.webgoat.container.session.LessonSession;
+import org.springframework.mock.web.MockHttpServletRequest;
 
-class BypassVerificationTest extends LessonTest {
+class BypassVerificationTest {
 
-  @Test
-  void placeHolder() {
-    assert (true);
+  private final LessonSession lessonSession = mock(LessonSession.class);
+  private final VerifyAccount endpoint = new VerifyAccount(lessonSession);
+
+  private MockHttpServletRequest correctAnswers() {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addParameter("secQuestion0", "Dr. Watson");
+    request.addParameter("secQuestion1", "Baker Street");
+    return request;
   }
 
-  // TODO: Finish tests below ... getting null on injected/mocked userSession for some reason (in
-  // AssignmentEndpoint:58 even though it it mocked via AssignmentEncpointTest and works in other
-  // tests)
-  //    @Test
-  //    public void testCheatingDetection() throws Exception {
-  //       ResultActions results =
-  // mockMvc.perform(MockMvcRequestBuilders.post("/auth-bypass/verify-account")
-  //               .param("secQuestion0","Dr. Watson")
-  //               .param("secQuestion1","Baker Street")
-  //               .param("verifyMethod","SEC_QUESTIONS")
-  //               .param("userId","1223445"));
-  //
-  //        results.andExpect(status().isOk())
-  //                .andExpect(jsonPath("$.feedback",
-  // CoreMatchers.is(messages.getMessage("verify-account.cheated"))));
-  //    }
+  @Test
+  void correctAnswersVerifyTheSeededAccount() throws Exception {
+    assertTrue(endpoint.completed("1223445", "SEC_QUESTIONS", correctAnswers()).assignmentSolved());
+    verify(lessonSession).setValue("account-verified-id", "1223445");
+  }
 
-  //    @Test
-  //    public void success() {
-  //
-  //    }
+  @Test
+  void unrelatedQuestionsDoNotVerifyTheAccount() throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest();
+    request.addParameter("secQuestion2", "any");
+    request.addParameter("secQuestion3", "any");
+    assertFalse(endpoint.completed("1223445", "SEC_QUESTIONS", request).assignmentSolved());
+  }
 
-  //    @Test
-  //    public void failure() {
-  //
-  //    }
+  @Test
+  void duplicateAndRenamedQuestionsAreRejected() throws Exception {
+    MockHttpServletRequest duplicate = correctAnswers();
+    duplicate.addParameter("secQuestion0", "another");
+    assertFalse(endpoint.completed("1223445", "SEC_QUESTIONS", duplicate).assignmentSolved());
 
+    MockHttpServletRequest renamed = correctAnswers();
+    renamed.addParameter("notsecQuestion0", "anything");
+    assertFalse(endpoint.completed("1223445", "SEC_QUESTIONS", renamed).assignmentSolved());
+  }
+
+  @Test
+  void accountAndMethodMustMatch() throws Exception {
+    assertFalse(endpoint.completed("12309746", "SEC_QUESTIONS", correctAnswers()).assignmentSolved());
+    assertFalse(endpoint.completed("1223445", "OTHER", correctAnswers()).assignmentSolved());
+    assertFalse(endpoint.completed("not-an-id", "SEC_QUESTIONS", correctAnswers()).assignmentSolved());
+  }
 }

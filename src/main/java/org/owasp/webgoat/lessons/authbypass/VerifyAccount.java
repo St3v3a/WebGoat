@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
 import org.owasp.webgoat.container.assignments.AttackResult;
@@ -47,31 +48,38 @@ public class VerifyAccount implements AssignmentEndpoint {
       throws ServletException, IOException {
     AccountVerificationHelper verificationHelper = new AccountVerificationHelper();
     Map<String, String> submittedAnswers = parseSecQuestions(req);
-    if (verificationHelper.didUserLikelylCheat((HashMap) submittedAnswers)) {
-      return failed(this)
-          .feedback("verify-account.cheated")
-          .output("Yes, you guessed correctly, but see the feedback message")
-          .build();
+    if (!"SEC_QUESTIONS".equals(verifyMethod) || submittedAnswers == null) {
+      return failed(this).feedback("verify-account.failed").build();
     }
-
-    // else
-    if (verificationHelper.verifyAccount(Integer.valueOf(userId), (HashMap) submittedAnswers)) {
-      userSessionData.setValue("account-verified-id", userId);
+    int targetUserId;
+    try {
+      targetUserId = Integer.parseInt(userId);
+    } catch (NumberFormatException e) {
+      return failed(this).feedback("verify-account.failed").build();
+    }
+    if (verificationHelper.verifyAccount(targetUserId, submittedAnswers)) {
+      userSessionData.setValue("account-verified-id", String.valueOf(targetUserId));
       return success(this).feedback("verify-account.success").build();
     } else {
       return failed(this).feedback("verify-account.failed").build();
     }
   }
 
-  private HashMap<String, String> parseSecQuestions(HttpServletRequest req) {
+  private Map<String, String> parseSecQuestions(HttpServletRequest req) {
     Map<String, String> userAnswers = new HashMap<>();
     List<String> paramNames = Collections.list(req.getParameterNames());
     for (String paramName : paramNames) {
-      // String paramName = req.getParameterNames().nextElement();
       if (paramName.contains("secQuestion")) {
-        userAnswers.put(paramName, req.getParameter(paramName));
+        if (!Set.of("secQuestion0", "secQuestion1").contains(paramName)) {
+          return null;
+        }
+        String[] values = req.getParameterValues(paramName);
+        if (values == null || values.length != 1) {
+          return null;
+        }
+        userAnswers.put(paramName, values[0]);
       }
     }
-    return (HashMap) userAnswers;
+    return userAnswers;
   }
 }

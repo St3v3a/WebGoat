@@ -1,6 +1,8 @@
 
 == 2FA Password Reset
 
+This event build verifies both named security answers for the selected account. The bypass described below is a historical example and should now fail.
+
 An excellent example of authentication bypass is a recent (2016) example (https://henryhoggard.co.uk/blog/Paypal-2FA-Bypass). He could not receive an SMS with a code, so he opted for
 an alternative method, which involved security questions.  Using a proxy, removed the parameters entirely and won.
 
