@@ -52,6 +52,24 @@ class HijackSessionAuthenticationProviderTest {
   }
 
   @Test
+  void generatedSessionRequiresItsRandomSuffix() {
+    Authentication issued =
+        provider.authenticate(Authentication.builder().name("any").credentials("any").build());
+    String[] parts = issued.getId().split("-");
+    assertThat(parts.length, is(3));
+    assertThat(parts[0].matches("[0-9]+"), is(true));
+    assertThat(parts[1].matches("[0-9]+"), is(true));
+    assertThat(parts[2].matches("[0-9a-f]{32}"), is(true));
+
+    provider.addSession(issued.getId());
+    Authentication exact = provider.authenticate(Authentication.builder().id(issued.getId()).build());
+    Authentication guessedPrefix =
+        provider.authenticate(Authentication.builder().id(parts[0] + "-" + parts[1]).build());
+    assertThat(exact.isAuthenticated(), is(true));
+    assertThat(guessedPrefix.isAuthenticated(), is(false));
+  }
+
+  @Test
   void testAuthenticationToString() {
     AuthenticationBuilder authBuilder =
         Authentication.builder()
