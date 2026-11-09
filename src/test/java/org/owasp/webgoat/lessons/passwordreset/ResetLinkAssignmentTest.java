@@ -19,14 +19,18 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.web.client.RestTemplate;
 
 class ResetLinkAssignmentTest extends LessonTest {
 
-  @Value("${webwolf.host}")
-  private String webWolfHost;
+  @Value("${webgoat.host}")
+  private String webGoatHost;
 
-  @Value("${webwolf.port}")
-  private String webWolfPort;
+  @Value("${webgoat.port}")
+  private String webGoatPort;
+
+  @MockBean private RestTemplate restTemplate;
 
   @Autowired private ResourceLoader resourceLoader;
 
@@ -81,7 +85,7 @@ class ResetLinkAssignmentTest extends LessonTest {
         .perform(
             MockMvcRequestBuilders.post("/PasswordReset/ForgotPassword/create-password-reset-link")
                 .param("email", TOM_EMAIL)
-                .header(HttpHeaders.HOST, webWolfHost + ":" + webWolfPort))
+                .header(HttpHeaders.HOST, webGoatHost + ":" + webGoatPort))
         .andExpect(status().isOk());
     Assertions.assertThat(ResetLinkAssignment.resetLinks).isNotEmpty();
 
