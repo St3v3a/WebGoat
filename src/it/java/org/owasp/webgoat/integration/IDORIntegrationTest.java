@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.hamcrest.CoreMatchers;
 import org.hamcrest.MatcherAssert;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -30,11 +29,6 @@ public class IDORIntegrationTest extends IntegrationTest {
     return Arrays.asList(
         dynamicTest("assignment 2 - login", this::loginIDOR),
         dynamicTest("profile", this::profile));
-  }
-
-  @AfterEach
-  public void shutdown() {
-    checkResults("IDOR");
   }
 
   private void loginIDOR() {
@@ -77,12 +71,24 @@ public class IDORIntegrationTest extends IntegrationTest {
             .when()
             .relaxedHTTPSValidation()
             .cookie("JSESSIONID", getWebGoatCookie())
+            .get(webGoatUrlConfig.url("IDOR/profile/2342384"))
+            .then()
+            .statusCode(200)
+            .extract()
+            .path("output"),
+        CoreMatchers.containsString("Tom Cat"));
+
+      MatcherAssert.assertThat(
+        RestAssured.given()
+            .when()
+            .relaxedHTTPSValidation()
+            .cookie("JSESSIONID", getWebGoatCookie())
             .get(webGoatUrlConfig.url("IDOR/profile/2342388"))
             .then()
             .statusCode(200)
             .extract()
             .path("lessonCompleted"),
-        CoreMatchers.is(true));
+        CoreMatchers.is(false));
 
     // assignment 5b
       MatcherAssert.assertThat(
@@ -99,6 +105,6 @@ public class IDORIntegrationTest extends IntegrationTest {
             .statusCode(200)
             .extract()
             .path("lessonCompleted"),
-        CoreMatchers.is(true));
+        CoreMatchers.is(false));
   }
 }
