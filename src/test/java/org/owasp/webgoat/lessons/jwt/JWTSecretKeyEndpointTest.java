@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.owasp.webgoat.WithWebGoatUser;
 import org.owasp.webgoat.container.plugins.LessonTest;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 @WithWebGoatUser
@@ -46,49 +47,64 @@ public class JWTSecretKeyEndpointTest extends LessonTest {
     return claims;
   }
 
+  private String issueToken(MockHttpSession session) throws Exception {
+    return mockMvc
+        .perform(MockMvcRequestBuilders.get("/JWT/secret/gettoken").session(session))
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+  }
+
   @Test
   public void solveAssignment() throws Exception {
+    MockHttpSession session = new MockHttpSession();
+    issueToken(session);
     Claims claims = createClaims("WebGoat");
     String token = Jwts.builder().setClaims(claims).signWith(HS512, JWT_SECRET).compact();
 
     mockMvc
-        .perform(MockMvcRequestBuilders.post("/JWT/secret").param("token", token))
+        .perform(MockMvcRequestBuilders.post("/JWT/secret").session(session).param("token", token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.lessonCompleted", is(true)));
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
   }
 
   @Test
   public void solveAssignmentWithLowercase() throws Exception {
+    MockHttpSession session = new MockHttpSession();
+    issueToken(session);
     Claims claims = createClaims("webgoat");
     String token = Jwts.builder().setClaims(claims).signWith(HS512, JWT_SECRET).compact();
 
     mockMvc
-        .perform(MockMvcRequestBuilders.post("/JWT/secret").param("token", token))
+        .perform(MockMvcRequestBuilders.post("/JWT/secret").session(session).param("token", token))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.lessonCompleted", is(true)));
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
   }
 
   @Test
-  public void oneOfClaimIsMissingShouldNotSolveAssignment() throws Exception {
-    Claims claims = createClaims("WebGoat");
-    claims.remove("aud");
-    String token = Jwts.builder().setClaims(claims).signWith(HS512, JWT_SECRET).compact();
-
+  public void issuedTokenCannotBeReplayed() throws Exception {
+    MockHttpSession session = new MockHttpSession();
+    String token = issueToken(session);
     mockMvc
-        .perform(MockMvcRequestBuilders.post("/JWT/secret").param("token", token))
+        .perform(MockMvcRequestBuilders.post("/JWT/secret").session(session).param("token", token))
         .andExpect(status().isOk())
         .andExpect(
             jsonPath(
-                "$.feedback", CoreMatchers.is(messages.getMessage("jwt-secret-claims-missing"))));
+                "$.feedback",
+                CoreMatchers.is(messages.getMessage("jwt-secret-incorrect-user", "default", "Tom"))));
+    mockMvc
+        .perform(MockMvcRequestBuilders.post("/JWT/secret").session(session).param("token", token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.feedback", CoreMatchers.is(messages.getMessage("jwt-invalid-token"))));
   }
 
   @Test
   public void incorrectUser() throws Exception {
-    Claims claims = createClaims("Tom");
-    String token = Jwts.builder().setClaims(claims).signWith(HS512, JWT_SECRET).compact();
+    MockHttpSession session = new MockHttpSession();
+    String token = issueToken(session);
 
     mockMvc
-        .perform(MockMvcRequestBuilders.post("/JWT/secret").param("token", token))
+        .perform(MockMvcRequestBuilders.post("/JWT/secret").session(session).param("token", token))
         .andExpect(status().isOk())
         .andExpect(
             jsonPath(
