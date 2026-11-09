@@ -50,10 +50,11 @@ public class SqlInjectionLesson6a implements AssignmentEndpoint {
   public AttackResult injectableQuery(String accountName) {
     String query = "";
     try (Connection connection = dataSource.getConnection()) {
+      String currentPassword = DaveLessonCredential.current(connection);
       boolean usedUnion = this.unionQueryChecker(accountName);
       query = "SELECT * FROM user_data WHERE last_name = '" + accountName + "'";
 
-      return executeSqlInjection(connection, query, usedUnion);
+      return executeSqlInjection(connection, query, usedUnion, currentPassword);
     } catch (Exception e) {
       return failed(this)
           .output(this.getClass().getName() + " : " + e.getMessage() + YOUR_QUERY_WAS + query)
@@ -65,7 +66,8 @@ public class SqlInjectionLesson6a implements AssignmentEndpoint {
     return accountName.matches("(?i)(^[^-/*;)]*)(\\s*)UNION(.*$)");
   }
 
-  private AttackResult executeSqlInjection(Connection connection, String query, boolean usedUnion) {
+  private AttackResult executeSqlInjection(
+      Connection connection, String query, boolean usedUnion, String currentPassword) {
     try (Statement statement =
         connection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
 
@@ -85,7 +87,7 @@ public class SqlInjectionLesson6a implements AssignmentEndpoint {
       output.append(SqlInjectionLesson5a.writeTable(results, resultsMetaData));
       results.last();
 
-      return verifySqlInjection(output, appendingWhenSucceded, query);
+      return verifySqlInjection(output, appendingWhenSucceded, query, currentPassword);
     } catch (SQLException sqle) {
       return failed(this).output(sqle.getMessage() + YOUR_QUERY_WAS + query).build();
     }
@@ -100,8 +102,8 @@ public class SqlInjectionLesson6a implements AssignmentEndpoint {
   }
 
   private AttackResult verifySqlInjection(
-      StringBuilder output, String appendingWhenSucceded, String query) {
-    if (!(output.toString().contains("dave") && output.toString().contains("passW0rD"))) {
+      StringBuilder output, String appendingWhenSucceded, String query, String currentPassword) {
+    if (!(output.toString().contains("dave") && output.toString().contains(currentPassword))) {
       return failed(this).output(output.toString() + YOUR_QUERY_WAS + query).build();
     }
 

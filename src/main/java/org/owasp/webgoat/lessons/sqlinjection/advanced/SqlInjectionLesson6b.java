@@ -7,11 +7,8 @@ package org.owasp.webgoat.lessons.sqlinjection.advanced;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.failed;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.success;
 
-import java.io.IOException;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import org.owasp.webgoat.container.LessonDataSource;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AttackResult;
@@ -30,35 +27,14 @@ public class SqlInjectionLesson6b implements AssignmentEndpoint {
 
   @PostMapping("/SqlInjectionAdvanced/attack6b")
   @ResponseBody
-  public AttackResult completed(@RequestParam String userid_6b) throws IOException {
-    if (userid_6b.equals(getPassword())) {
-      return success(this).build();
-    } else {
-      return failed(this).build();
-    }
-  }
-
-  protected String getPassword() {
-    String password = "dave";
+  public AttackResult completed(@RequestParam String userid_6b) {
     try (Connection connection = dataSource.getConnection()) {
-      String query = "SELECT password FROM user_system_data WHERE user_name = 'dave'";
-      try {
-        Statement statement =
-            connection.createStatement(
-                ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-        ResultSet results = statement.executeQuery(query);
-
-        if (results != null && results.first()) {
-          password = results.getString("password");
-        }
-      } catch (SQLException sqle) {
-        sqle.printStackTrace();
-        // do nothing
+      if (userid_6b.equals(DaveLessonCredential.current(connection))) {
+        return success(this).build();
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-      // do nothing
+    } catch (SQLException e) {
+      // Database errors cannot validate a guessed password.
     }
-    return (password);
+    return failed(this).build();
   }
 }
