@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.jsonwebtoken.Jwts;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,11 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.owasp.webgoat.container.plugins.LessonTest;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.test.web.servlet.MvcResult;
 
 public class JWTHeaderKIDEndpointTest extends LessonTest {
-
-  private static final String TOKEN_JERRY =
-      "eyJraWQiOiJ3ZWJnb2F0X2tleSIsImFsZyI6IkhTNTEyIn0.eyJhdWQiOiJ3ZWJnb2F0Lm9yZyIsImVtYWlsIjoiamVycnlAd2ViZ29hdC5jb20iLCJ1c2VybmFtZSI6IkplcnJ5In0.xBc5FFwaOcuxjdr_VJ16n8Jb7vScuaZulNTl66F2MWF1aBe47QsUosvbjWGORNcMPiPNwnMu1Yb0WZVNrp2ZXA";
 
   @BeforeEach
   public void setup() {
@@ -31,7 +30,7 @@ public class JWTHeaderKIDEndpointTest extends LessonTest {
   }
 
   @Test
-  public void solveAssignment() throws Exception {
+  public void injectedKidCannotSelectSigningKey() throws Exception {
     String key = "deletingTom";
     Map<String, Object> claims = new HashMap<>();
     claims.put("username", "Tom");
@@ -46,14 +45,32 @@ public class JWTHeaderKIDEndpointTest extends LessonTest {
     mockMvc
         .perform(MockMvcRequestBuilders.post("/JWT/kid/delete").param("token", token).content(""))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.lessonCompleted", is(true)));
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
   }
 
   @Test
-  public void withJerrysKeyShouldNotSolveAssignment() throws Exception {
+  public void oldPublicKeyCannotDeleteTom() throws Exception {
+    byte[] oldKey = Base64.getDecoder().decode("qwertyqwerty1234");
+    String token =
+        Jwts.builder()
+            .setHeaderParam("kid", "webgoat_key")
+            .claim("username", "Tom")
+            .signWith(io.jsonwebtoken.SignatureAlgorithm.HS256, oldKey)
+            .compact();
+    mockMvc
+        .perform(MockMvcRequestBuilders.post("/JWT/kid/delete").param("token", token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
+  }
+
+  @Test
+  public void issuedJerryTokenStillWorks() throws Exception {
+    MvcResult issued =
+        mockMvc.perform(MockMvcRequestBuilders.get("/JWT/kid/token")).andExpect(status().isOk()).andReturn();
     mockMvc
         .perform(
-            MockMvcRequestBuilders.post("/JWT/kid/delete").param("token", TOKEN_JERRY).content(""))
+            MockMvcRequestBuilders.post("/JWT/kid/delete")
+                .param("token", issued.getResponse().getContentAsString()))
         .andExpect(status().isOk())
         .andExpect(
             jsonPath(

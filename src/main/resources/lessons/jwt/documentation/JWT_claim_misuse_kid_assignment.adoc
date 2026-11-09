@@ -3,3 +3,5 @@
 Below you see two accounts, one of Jerry and one of Tom.
 Jerry wants to remove Tom's account from Twitter, but his token can only delete his account.
 Can you try to help him and delete Toms account?
+
+In this hardened event build, the server selects its own signing key rather than a key named by the token. Use the fresh Jerry token linked below to check the normal response; the historical account-switching attack should fail.

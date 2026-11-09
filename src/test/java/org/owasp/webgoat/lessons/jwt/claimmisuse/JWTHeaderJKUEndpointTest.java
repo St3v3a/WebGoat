@@ -22,6 +22,7 @@ import java.util.Map;
 import org.jose4j.jwk.JsonWebKeySet;
 import org.jose4j.jwk.RsaJsonWebKey;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.owasp.webgoat.container.plugins.LessonTest;
@@ -53,15 +54,36 @@ class JWTHeaderJKUEndpointTest extends LessonTest {
     return keyPairGenerator.generateKeyPair();
   }
 
+  @AfterEach
+  void stopWebWolf() {
+    webwolfServer.stop();
+  }
+
   @Test
-  void solve() throws Exception {
+  void attackerJwksCannotSelectVerificationKey() throws Exception {
     setupJsonWebKeySetInWebWolf();
     var token = createTokenAndSignIt();
 
     mockMvc
         .perform(MockMvcRequestBuilders.post("/JWT/jku/delete").param("token", token).content(""))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.lessonCompleted", is(true)));
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
+    webwolfServer.verify(0, WireMock.getRequestedFor(WireMock.urlMatching("/files/jwks")));
+  }
+
+  @Test
+  void issuedJerryTokenStillWorks() throws Exception {
+    String token =
+        mockMvc
+            .perform(MockMvcRequestBuilders.get("/JWT/jku/token"))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    mockMvc
+        .perform(MockMvcRequestBuilders.post("/JWT/jku/delete").param("token", token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
   }
 
   @Test

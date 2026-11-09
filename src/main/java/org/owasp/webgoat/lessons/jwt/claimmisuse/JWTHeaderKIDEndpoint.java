@@ -8,19 +8,16 @@ import static org.owasp.webgoat.container.assignments.AttackResultBuilder.failed
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.success;
 
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.JwsHeader;
-import io.jsonwebtoken.Jwt;
+import io.jsonwebtoken.Jws;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SigningKeyResolverAdapter;
-import io.jsonwebtoken.impl.TextCodec;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import io.jsonwebtoken.SignatureAlgorithm;
+import java.security.SecureRandom;
 import org.apache.commons.lang3.StringUtils;
-import org.owasp.webgoat.container.LessonDataSource;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
 import org.owasp.webgoat.container.assignments.AttackResult;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,10 +36,11 @@ import org.springframework.web.bind.annotation.RestController;
 })
 @RequestMapping("/JWT/")
 public class JWTHeaderKIDEndpoint implements AssignmentEndpoint {
-  private final LessonDataSource dataSource;
+  private static final String KEY_ID = "webgoat-local-key";
+  private static final byte[] SIGNING_KEY = new byte[32];
 
-  private JWTHeaderKIDEndpoint(LessonDataSource dataSource) {
-    this.dataSource = dataSource;
+  static {
+    new SecureRandom().nextBytes(SIGNING_KEY);
   }
 
   @PostMapping("kid/follow/{user}")
@@ -54,52 +52,36 @@ public class JWTHeaderKIDEndpoint implements AssignmentEndpoint {
     }
   }
 
+  @GetMapping("kid/token")
+  public @ResponseBody String issueJerryToken() {
+    return Jwts.builder()
+        .setHeaderParam("kid", KEY_ID)
+        .claim("username", "Jerry")
+        .signWith(SignatureAlgorithm.HS256, SIGNING_KEY)
+        .compact();
+  }
+
   @PostMapping("kid/delete")
   public @ResponseBody AttackResult resetVotes(@RequestParam("token") String token) {
     if (StringUtils.isEmpty(token)) {
       return failed(this).feedback("jwt-invalid-token").build();
-    } else {
-      try {
-        final String[] errorMessage = {null};
-        Jwt jwt =
-            Jwts.parser()
-                .setSigningKeyResolver(
-                    new SigningKeyResolverAdapter() {
-                      @Override
-                      public byte[] resolveSigningKeyBytes(JwsHeader header, Claims claims) {
-                        final String kid = (String) header.get("kid");
-                        try (var connection = dataSource.getConnection()) {
-                          ResultSet rs =
-                              connection
-                                  .createStatement()
-                                  .executeQuery(
-                                      "SELECT key FROM jwt_keys WHERE id = '" + kid + "'");
-                          while (rs.next()) {
-                            return TextCodec.BASE64.decode(rs.getString(1));
-                          }
-                        } catch (SQLException e) {
-                          errorMessage[0] = e.getMessage();
-                        }
-                        return null;
-                      }
-                    })
-                .parseClaimsJws(token);
-        if (errorMessage[0] != null) {
-          return failed(this).output(errorMessage[0]).build();
-        }
-        Claims claims = (Claims) jwt.getBody();
-        String username = (String) claims.get("username");
-        if ("Jerry".equals(username)) {
-          return failed(this).feedback("jwt-final-jerry-account").build();
-        }
-        if ("Tom".equals(username)) {
-          return success(this).build();
-        } else {
-          return failed(this).feedback("jwt-final-not-tom").build();
-        }
-      } catch (JwtException e) {
-        return failed(this).feedback("jwt-invalid-token").output(e.toString()).build();
+    }
+    try {
+      Jws<Claims> jwt = Jwts.parser().setSigningKey(SIGNING_KEY).parseClaimsJws(token);
+      if (!KEY_ID.equals(jwt.getHeader().getKeyId())
+          || !"HS256".equals(jwt.getHeader().getAlgorithm())) {
+        return failed(this).feedback("jwt-invalid-token").build();
       }
+      Object username = jwt.getBody().get("username");
+      if ("Jerry".equals(username)) {
+        return failed(this).feedback("jwt-final-jerry-account").build();
+      }
+      if ("Tom".equals(username)) {
+        return success(this).build();
+      }
+      return failed(this).feedback("jwt-final-not-tom").build();
+    } catch (JwtException e) {
+      return failed(this).feedback("jwt-invalid-token").build();
     }
   }
 }

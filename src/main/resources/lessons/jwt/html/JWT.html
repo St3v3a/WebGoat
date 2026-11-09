@@ -320,7 +320,9 @@
         <div class="assignment-success"><i class="fa fa-2 fa-check hidden" aria-hidden="true"></i></div>
         <form class="attack-form" accept-charset="UNKNOWN"
               method="POST"
-              th:action="@{/JWT/jku/delete?token=eyJ0eXAiOiJKV1QiLCJqa3UiOiJodHRwczovL2NvZ25pdG8taWRwLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tL3dlYmdvYXQvLndlbGwta25vd24vandrcy5qc29uIiwiYWxnIjoiUlMyNTYifQ.ewogICJpc3MiOiAiV2ViR29hdCBUb2tlbiBCdWlsZGVyIiwKICAiaWF0IjogMTUyNDIxMDkwNCwKICAiZXhwIjogMTYxODkwNTMwNCwKICAiYXVkIjogIndlYmdvYXQub3JnIiwKICAic3ViIjogImplcnJ5QHdlYmdvYXQuY29tIiwKICAidXNlcm5hbWUiOiAiSmVycnkiLAogICJFbWFpbCI6ICJqZXJyeUB3ZWJnb2F0LmNvbSIsCiAgIlJvbGUiOiBbCiAgICAiQ2F0IgogIF0KfQ.SabvRaYSCW7xI0ueca19TL1e66cJIJaxRiydK2G5lgFMIbL5gQQjE6022HEha9HcprqFXyHbtXrQWRXAp6Gjaf5zs8LUMBMARWjEr8TS43ihguarmLLmvBCoqjiZY39o4EcEjEH9xAoyIYR_Trh7kXn6JVU-8MM76l9IOcYIJ9c8LqT1ERNmbCqtI4PP0tdqCy99nHhqlxSCVXaGDF0jMHV5kjCDSHNYib9riy9xZ63Sztify-bwPqRvxmaShPYtG4BBM_WOGlg-bYTTuws-6yISMfTB5U1WBDwLr6dLU123TGO26wCVBgTKbA0KKG94-ToOcneWLOTEacEfQQOlIQ}">
+              th:action="@{/JWT/jku/delete}">
+            <p><a th:href="@{/JWT/jku/token}" target="_blank">Get a fresh Jerry token</a></p>
+            <p><label>Token <input type="text" name="token" size="80" /></label></p>
             <div class="container-fluid">
                 <div id="toast"></div>
                 <div class="col-sm-6 col-md-4 col-lg-3 mt-4">
@@ -386,7 +388,9 @@
         <div class="assignment-success"><i class="fa fa-2 fa-check hidden" aria-hidden="true"></i></div>
         <form class="attack-form" accept-charset="UNKNOWN"
               method="POST"
-              th:action="@{/JWT/kid/delete?token=eyJ0eXAiOiJKV1QiLCJraWQiOiJ3ZWJnb2F0X2tleSIsImFsZyI6IkhTMjU2In0.ewogICJpc3MiOiAiV2ViR29hdCBUb2tlbiBCdWlsZGVyIiwKICAiaWF0IjogMTUyNDIxMDkwNCwKICAiZXhwIjogMTYxODkwNTMwNCwKICAiYXVkIjogIndlYmdvYXQub3JnIiwKICAic3ViIjogImplcnJ5QHdlYmdvYXQuY29tIiwKICAidXNlcm5hbWUiOiAiSmVycnkiLAogICJFbWFpbCI6ICJqZXJyeUB3ZWJnb2F0LmNvbSIsCiAgIlJvbGUiOiBbCiAgICAiQ2F0IgogIF0KfQ.CgZ27DzgVW8gzc0n6izOU638uUCi6UhiOJKYzoEZGE8}">
+              th:action="@{/JWT/kid/delete}">
+            <p><a th:href="@{/JWT/kid/token}" target="_blank">Get a fresh Jerry token</a></p>
+            <p><label>Token <input type="text" name="token" size="80" /></label></p>
             <div class="container-fluid">
                 <div id="toast"></div>
                 <div class="col-sm-6 col-md-4 col-lg-3 mt-4">
