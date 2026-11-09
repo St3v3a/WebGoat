@@ -28,6 +28,9 @@ $(function () {
 
 $(document).ready(function () {
     getServers('id');
+    $('#try-unsafe-sort').on('click', function () {
+        getServers('hostname DESC');
+    });
 });
 
 var html = '<tr class="STATUS">' +
@@ -40,7 +43,8 @@ var html = '<tr class="STATUS">' +
     '</tr>';
 
 function getServers(column) {
-    $.get("SqlInjectionMitigations/servers?column=" + column, function (result, status) {
+    $.get("SqlInjectionMitigations/servers?column=" + encodeURIComponent(column), function (result, status) {
+        $('#sort-result').text('Sorted by ' + column + '.');
         $("#servers").empty();
         for (var i = 0; i < result.length; i++) {
             var server = html.replace('ID', result[i].id);
@@ -57,5 +61,7 @@ function getServers(column) {
             $("#servers").append(server);
         }
 
+    }).fail(function () {
+        $('#sort-result').text('The server rejected that sort expression. Choose a named column next.');
     });
 }

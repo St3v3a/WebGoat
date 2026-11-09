@@ -167,6 +167,8 @@
                             <tbody id="servers">
                             </tbody>
                         </table>
+                        <button type="button" id="try-unsafe-sort" class="btn btn-default">Try an unsupported sort expression</button>
+                        <p id="sort-result" aria-live="polite"></p>
                     </div>
                 </div>
                 <br/>
@@ -176,12 +178,18 @@
         <form class="attack-form" method="POST" name="form" th:action="@{/SqlInjectionMitigations/attack12a}">
             <div class="form-group">
                 <div class="input-group">
-                    <div class="input-group-addon">IP address webgoat-prd server:</div>
-                    <input type="text" class="form-control" id="ip" name="ip"
-                           placeholder="192.1.0.12"/>
+                    <label class="input-group-addon" for="safeColumn">Safe sort column used after rejection:</label>
+                    <select class="form-control" id="safeColumn" name="safeColumn">
+                        <option value="id">ID</option>
+                        <option value="hostname">Hostname</option>
+                        <option value="ip">IP</option>
+                        <option value="mac">MAC</option>
+                        <option value="status">Status</option>
+                        <option value="description">Description</option>
+                    </select>
                 </div>
                 <div class="input-group" style="margin-top: 10px">
-                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="submit" class="btn btn-primary">Complete mitigation</button>
                 </div>
             </div>
         </form>

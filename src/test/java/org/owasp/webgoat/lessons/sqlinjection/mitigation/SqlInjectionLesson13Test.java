@@ -4,139 +4,120 @@
  */
 package org.owasp.webgoat.lessons.sqlinjection.mitigation;
 
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.owasp.webgoat.container.plugins.LessonTest;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-/**
- * @author nbaars
- * @since 5/21/17.
- */
 public class SqlInjectionLesson13Test extends LessonTest {
 
-  @Test
-  public void knownAccountShouldDisplayData() throws Exception {
+  @ParameterizedTest
+  @ValueSource(strings = {"id", "hostname", "ip", "mac", "status", "description"})
+  public void ordinarySortColumnsReturnOnlyVisibleServers(String column) throws Exception {
     mockMvc
         .perform(
-            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers").param("column", "id"))
-        .andExpect(status().isOk());
+            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
+                .param("column", column))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$", hasSize(4)))
+        .andExpect(jsonPath("$[*].hostname", not(hasItem("webgoat-prd"))))
+        .andExpect(jsonPath("$[0].id").exists())
+        .andExpect(jsonPath("$[0].ip").exists())
+        .andExpect(jsonPath("$[0].mac").exists())
+        .andExpect(jsonPath("$[0].status").exists())
+        .andExpect(jsonPath("$[0].description").exists());
   }
 
   @Test
-  public void addressCorrectShouldOrderByHostname() throws Exception {
+  public void sortingStillUsesTheSelectedColumn() throws Exception {
     mockMvc
-        .perform(
-            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
-                .param(
-                    "column",
-                    "CASE WHEN (SELECT ip FROM servers WHERE hostname='webgoat-prd') LIKE '104.%'"
-                        + " THEN hostname ELSE id END"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].hostname", is("webgoat-acc")));
-  }
-
-  @Test
-  public void addressCorrectShouldOrderByHostnameUsingSubstr() throws Exception {
-    mockMvc
-        .perform(
-            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
-                .param(
-                    "column",
-                    "case when (select ip from servers where hostname='webgoat-prd' and"
-                        + " substr(ip,1,1) = '1') IS NOT NULL then hostname else id end"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].hostname", is("webgoat-acc")));
-
-    mockMvc
-        .perform(
-            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
-                .param(
-                    "column",
-                    "case when (select ip from servers where hostname='webgoat-prd' and"
-                        + " substr(ip,2,1) = '0') IS NOT NULL then hostname else id end"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].hostname", is("webgoat-acc")));
-
-    mockMvc
-        .perform(
-            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
-                .param(
-                    "column",
-                    "case when (select ip from servers where hostname='webgoat-prd' and"
-                        + " substr(ip,3,1) = '4') IS NOT NULL then hostname else id end"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].hostname", is("webgoat-acc")));
-  }
-
-  @Test
-  public void addressIncorrectShouldOrderByIdUsingSubstr() throws Exception {
-    mockMvc
-        .perform(
-            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
-                .param(
-                    "column",
-                    "case when (select ip from servers where hostname='webgoat-prd' and"
-                        + " substr(ip,1,1) = '9') IS NOT NULL then hostname else id end"))
+        .perform(MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers").param("column", "id"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].hostname", is("webgoat-dev")));
-  }
-
-  @Test
-  public void trueShouldSortByHostname() throws Exception {
     mockMvc
         .perform(
             MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
-                .param("column", "(case when (true) then hostname else id end)"))
-        .andExpect(status().isOk())
+                .param("column", "hostname"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].hostname", is("webgoat-acc")));
   }
 
-  @Test
-  public void falseShouldSortById() throws Exception {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "CASE WHEN (SELECT ip FROM servers WHERE hostname='webgoat-prd') LIKE '104.%' THEN hostname ELSE id END",
+        "id; SELECT * FROM servers",
+        "hostname DESC",
+        "description --",
+        "unknown"
+      })
+  public void expressionsAndUnknownColumnsAreRejected(String column) throws Exception {
     mockMvc
         .perform(
             MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
-                .param("column", "(case when (true) then hostname else id end)"))
-        .andExpect(status().isOk())
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].hostname", is("webgoat-acc")));
+                .param("column", column))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
-  public void addressIncorrectShouldOrderByHostname() throws Exception {
+  public void missingColumnIsRejected() throws Exception {
     mockMvc
-        .perform(
-            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
-                .param(
-                    "column",
-                    "CASE WHEN (SELECT ip FROM servers WHERE hostname='webgoat-prd') LIKE '192.%'"
-                        + " THEN hostname ELSE id END"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].hostname", is("webgoat-dev")));
+        .perform(MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers"))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
-  public void postingCorrectAnswerShouldPassTheLesson() throws Exception {
+  public void mitigationExerciseRequiresRejectedExpressionThenSuccessfulNamedSort()
+      throws Exception {
+    MockHttpSession session = new MockHttpSession();
     mockMvc
         .perform(
             MockMvcRequestBuilders.post("/SqlInjectionMitigations/attack12a")
+                .session(session)
                 .param("ip", "104.130.219.202"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.lessonCompleted", is(true)));
-  }
-
-  @Test
-  public void postingWrongAnswerShouldNotPassTheLesson() throws Exception {
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
+                .session(session)
+                .param("column", "hostname DESC"))
+        .andExpect(status().isBadRequest());
     mockMvc
         .perform(
             MockMvcRequestBuilders.post("/SqlInjectionMitigations/attack12a")
-                .param("ip", "192.168.219.202"))
+                .session(session)
+                .param("safeColumn", "id"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.lessonCompleted", is(false)));
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.get("/SqlInjectionMitigations/servers")
+                .session(session)
+                .param("column", "hostname"))
+        .andExpect(status().isOk());
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/SqlInjectionMitigations/attack12a")
+                .session(session)
+                .param("safeColumn", "id"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/SqlInjectionMitigations/attack12a")
+                .session(session)
+                .param("safeColumn", "hostname"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", is(true)));
   }
 }

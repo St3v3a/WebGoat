@@ -1,5 +1,11 @@
-In this assignment try to perform an SQL injection through the ORDER BY field.
-Try to find the ip address of the `webgoat-prd` server, guessing the complete
-ip address might take too long so we give you the last part: `xxx.130.219.202`
+The server inventory now accepts only its six named sort columns. You can
+sort by ID, hostname, IP, MAC, status or description. SQL expressions and
+unknown columns are rejected before a database query runs.
 
-Note: The submit field of this assignment is *NOT* vulnerable to an SQL injection.
+Click "Try an unsupported sort expression" and observe the rejection. Then
+sort the list by one of its named columns. Select that same column in the
+form to complete the mitigation exercise. The list still omits servers marked
+out of order.
+
+Earlier versions allowed an expression in ORDER BY to infer a hidden server's
+address. Accepting only known column names closes that injection boundary.
