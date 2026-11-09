@@ -13,4 +13,6 @@ to be aware of before validating the token.
 
 == Assignment
 
-Try to change the token you receive and become an admin user by changing the token and once you are admin reset the votes
+In this hardened event build, issued voting tokens use a private signing key and unsigned or changed tokens are rejected. The original vote-reset attack is shown here as a historical exercise.
+
+The original exercise asked you to change a token, claim admin access, and reset the votes. In this build, those changes should be rejected.

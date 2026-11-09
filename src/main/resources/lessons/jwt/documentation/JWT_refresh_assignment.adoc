@@ -7,5 +7,6 @@ found in a private bug bounty program on Bugcrowd, you can read the full write u
 
 === Assignment
 
-From a breach of last year the following logfile is available link:images/logs.txt[here]
-Can you find a way to order the books but let *Tom* pay for them?
+The hardened event build requires a signed access token and binds each refresh token to its original user. The account-switching attack below describes the original vulnerable flow.
+
+The original exercise used this link:images/logs.txt[logfile] to try to order books as *Tom*. In this build, a token from that log cannot renew with another user's refresh token.

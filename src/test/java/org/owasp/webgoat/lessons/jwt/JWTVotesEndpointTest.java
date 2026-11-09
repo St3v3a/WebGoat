@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.impl.TextCodec;
 import jakarta.servlet.http.Cookie;
 import java.util.Map;
 import org.hamcrest.CoreMatchers;
@@ -36,7 +37,7 @@ public class JWTVotesEndpointTest extends LessonTest {
   }
 
   @Test
-  public void solveAssignment() throws Exception {
+  public void unsignedTokenCannotResetVotes() throws Exception {
     // Create new token and set alg to none and do not sign it
     Claims claims = Jwts.claims();
     claims.put("admin", "true");
@@ -50,11 +51,11 @@ public class JWTVotesEndpointTest extends LessonTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .cookie(new Cookie("access_token", token)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.lessonCompleted", is(true)));
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
   }
 
   @Test
-  public void solveAssignmentWithBoolean() throws Exception {
+  public void unsignedBooleanClaimCannotResetVotes() throws Exception {
     // Create new token and set alg to none and do not sign it
     Claims claims = Jwts.claims();
     claims.put("admin", true);
@@ -68,7 +69,23 @@ public class JWTVotesEndpointTest extends LessonTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .cookie(new Cookie("access_token", token)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.lessonCompleted", is(true)));
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
+  }
+
+  @Test
+  public void oldPublicSigningSecretCannotResetVotes() throws Exception {
+    Claims claims = Jwts.claims();
+    claims.put("admin", "true");
+    claims.put("user", "Tom");
+    String forged =
+        Jwts.builder()
+            .setClaims(claims)
+            .signWith(io.jsonwebtoken.SignatureAlgorithm.HS512, TextCodec.BASE64.encode("victory"))
+            .compact();
+    mockMvc
+        .perform(MockMvcRequestBuilders.post("/JWT/votings").cookie(new Cookie("access_token", forged)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
   }
 
   @Test
