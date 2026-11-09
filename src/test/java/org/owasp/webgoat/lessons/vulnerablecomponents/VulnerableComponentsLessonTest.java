@@ -5,61 +5,48 @@
 package org.owasp.webgoat.lessons.vulnerablecomponents;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.StreamException;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
-public class VulnerableComponentsLessonTest {
+class VulnerableComponentsLessonTest {
 
-  String strangeContact =
-      "<contact class='dynamic-proxy'>\n"
-          + "<interface>org.owasp.webgoat.vulnerablecomponents.Contact</interface>\n"
-          + "  <handler class='java.beans.EventHandler'>\n"
-          + "    <target class='java.lang.ProcessBuilder'>\n"
-          + "      <command>\n"
-          + "        <string>calc.exe</string>\n"
-          + "      </command>\n"
-          + "    </target>\n"
-          + "    <action>start</action>\n"
-          + "  </handler>\n"
+  private static final String CONTACT =
+      "<contact><id>1</id><firstName>Bruce</firstName><lastName>Mayhew</lastName>"
+          + "<email>webgoat@owasp.org</email></contact>";
+  private static final String PROXY =
+      "<contact class='dynamic-proxy'><interface>"
+          + "org.owasp.webgoat.lessons.vulnerablecomponents.Contact</interface>"
+          + "<handler class='java.beans.EventHandler'><target class='java.lang.ProcessBuilder'>"
+          + "<command><string>echo</string></command></target><action>start</action></handler>"
           + "</contact>";
-  String contact = "<contact>\n" + "</contact>";
 
   @Test
-  public void testTransformation() throws Exception {
-    XStream xstream = new XStream();
-    xstream.setClassLoader(Contact.class.getClassLoader());
-    xstream.alias("contact", ContactImpl.class);
-    xstream.ignoreUnknownElements();
-    assertThat(xstream.fromXML(contact)).isNotNull();
+  void acceptsDocumentedContactShape() throws Exception {
+    assertThat(SafeContactXml.parse("<contact/>")).isNotNull();
+    ContactImpl parsed = SafeContactXml.parse(CONTACT);
+    assertThat(parsed.getId()).isEqualTo(1);
+    assertThat(parsed.getFirstName()).isEqualTo("Bruce");
+    assertThat(parsed.getEmail()).isEqualTo("webgoat@owasp.org");
+    assertThat(SafeContactXml.parse("<contact><firstName><![CDATA[Jane & John]]></firstName></contact>").getFirstName())
+        .isEqualTo("Jane & John");
+    assertFalse(new VulnerableComponentsLesson().completed(CONTACT).assignmentSolved());
   }
 
   @Test
-  @Disabled
-  public void testIllegalTransformation() throws Exception {
-    XStream xstream = new XStream();
-    xstream.setClassLoader(Contact.class.getClassLoader());
-    xstream.alias("contact", ContactImpl.class);
-    xstream.ignoreUnknownElements();
-    Exception e =
-        assertThrows(
-            RuntimeException.class,
-            () -> ((Contact) xstream.fromXML(strangeContact)).getFirstName());
-    assertThat(e.getCause().getMessage().contains("calc.exe")).isTrue();
+  void rejectsTypeMetadataAndNestedGadgets() {
+    for (String xml : new String[] {PROXY, "<contact><firstName class='java.lang.ProcessBuilder'>x</firstName></contact>", "<wrapper><contact/></wrapper>"}) {
+      assertThrows(Exception.class, () -> SafeContactXml.parse(xml));
+      assertFalse(new VulnerableComponentsLesson().completed(xml).assignmentSolved());
+    }
   }
 
   @Test
-  public void testIllegalPayload() throws Exception {
-    XStream xstream = new XStream();
-    xstream.setClassLoader(Contact.class.getClassLoader());
-    xstream.alias("contact", ContactImpl.class);
-    xstream.ignoreUnknownElements();
-    Exception e =
-        assertThrows(
-            StreamException.class, () -> ((Contact) xstream.fromXML("bullssjfs")).getFirstName());
-    assertThat(e.getCause().getMessage().contains("START_DOCUMENT")).isTrue();
+  void rejectsEntityDeclarationsAndMalformedXml() {
+    for (String xml : new String[] {"<!DOCTYPE contact [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><contact><firstName>&x;</firstName></contact>", "bullssjfs", "<contact><unknown>x</unknown></contact>"}) {
+      assertThrows(Exception.class, () -> SafeContactXml.parse(xml));
+      assertFalse(new VulnerableComponentsLesson().completed(xml).assignmentSolved());
+    }
   }
 }

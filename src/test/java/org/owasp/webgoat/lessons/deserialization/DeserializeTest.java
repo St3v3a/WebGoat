@@ -7,7 +7,10 @@ package org.owasp.webgoat.lessons.deserialization;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.dummy.insecure.framework.VulnerableTaskHolder;
 import org.hamcrest.CoreMatchers;
 import org.junit.jupiter.api.Test;
@@ -16,30 +19,29 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 class DeserializeTest extends LessonTest {
 
-  private static String OS = System.getProperty("os.name").toLowerCase();
+  @Test
+  void serializedTaskDoesNotExecute() throws Exception {
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/InsecureDeserialization/task")
+                .param(
+                    "token",
+                    SerializationHelper.toString(new VulnerableTaskHolder("wait", "sleep 5"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
+  }
 
   @Test
-  void success() throws Exception {
-    if (OS.indexOf("win") > -1) {
-      mockMvc
-          .perform(
-              MockMvcRequestBuilders.post("/InsecureDeserialization/task")
-                  .param(
-                      "token",
-                      SerializationHelper.toString(
-                          new VulnerableTaskHolder("wait", "ping localhost -n 5"))))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.lessonCompleted", is(true)));
-    } else {
-      mockMvc
-          .perform(
-              MockMvcRequestBuilders.post("/InsecureDeserialization/task")
-                  .param(
-                      "token",
-                      SerializationHelper.toString(new VulnerableTaskHolder("wait", "sleep 5"))))
-          .andExpect(status().isOk())
-          .andExpect(jsonPath("$.lessonCompleted", is(true)));
-    }
+  void nestedTaskIsRejectedBeforeItsCallbackRuns() throws Exception {
+    String token =
+        SerializationHelper.toString(
+            new ArrayList<>(List.of(new VulnerableTaskHolder("wait", "sleep 5"))));
+    long started = System.nanoTime();
+    mockMvc
+        .perform(MockMvcRequestBuilders.post("/InsecureDeserialization/task").param("token", token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.lessonCompleted", is(false)));
+    assertTrue(System.nanoTime() - started < 4_000_000_000L);
   }
 
   @Test
