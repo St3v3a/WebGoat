@@ -18,6 +18,7 @@ import java.security.Signature;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Base64;
 import javax.xml.bind.DatatypeConverter;
@@ -55,6 +56,22 @@ public class CryptoUtil {
             + "\n";
     encodedString = encodedString + "-----END PRIVATE KEY-----\n";
     return encodedString;
+  }
+
+  public static String getPublicKeyInPEM(KeyPair keyPair) {
+    return "-----BEGIN PUBLIC KEY-----\n"
+        + Base64.getMimeEncoder(64, new byte[] {'\n'})
+            .encodeToString(keyPair.getPublic().getEncoded())
+        + "\n-----END PUBLIC KEY-----\n";
+  }
+
+  public static PublicKey getPublicKeyFromPEM(String publicKeyPem)
+      throws NoSuchAlgorithmException, InvalidKeySpecException {
+    publicKeyPem = publicKeyPem.replace("-----BEGIN PUBLIC KEY-----", "");
+    publicKeyPem = publicKeyPem.replace("-----END PUBLIC KEY-----", "");
+    publicKeyPem = publicKeyPem.replace("\n", "").replace("\r", "").trim();
+    byte[] decoded = Base64.getDecoder().decode(publicKeyPem);
+    return KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(decoded));
   }
 
   public static String signMessage(String message, PrivateKey privateKey) {

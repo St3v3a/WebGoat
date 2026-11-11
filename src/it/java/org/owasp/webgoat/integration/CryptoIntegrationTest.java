@@ -11,6 +11,7 @@ import java.nio.charset.Charset;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Base64;
 import java.util.HashMap;
@@ -120,26 +121,36 @@ public class CryptoIntegrationTest extends IntegrationTest {
   }
 
   private void checkAssignmentSigning() throws NoSuchAlgorithmException, InvalidKeySpecException {
+    String publicPEM = signingResource("crypto/signing/getpublic");
+    String signature = signingResource("crypto/signing/getsignature");
+    RSAPublicKey publicKey = (RSAPublicKey) CryptoUtil.getPublicKeyFromPEM(publicPEM);
+    String modulus = DatatypeConverter.printHexBinary(publicKey.getModulus().toByteArray());
 
-      String privatePEM =
-        RestAssured.given()
-            .when()
-            .relaxedHTTPSValidation()
-            .cookie("JSESSIONID", getWebGoatCookie())
-            .get(webGoatUrlConfig.url("crypto/signing/getprivate"))
-            .then()
-            .extract()
-            .asString();
-    PrivateKey privateKey = CryptoUtil.getPrivateKeyFromPEM(privatePEM);
-
-    RSAPrivateKey privk = (RSAPrivateKey) privateKey;
-    String modulus = DatatypeConverter.printHexBinary(privk.getModulus().toByteArray());
-    String signature = CryptoUtil.signMessage(modulus, privateKey);
+    // a signature made with the practice key must not be accepted
+    PrivateKey practiceKey =
+        CryptoUtil.getPrivateKeyFromPEM(signingResource("crypto/signing/getprivate"));
+    String practiceModulus =
+        DatatypeConverter.printHexBinary(((RSAPrivateKey) practiceKey).getModulus().toByteArray());
     Map<String, Object> params = new HashMap<>();
+    params.put("modulus", practiceModulus);
+    params.put("signature", CryptoUtil.signMessage(practiceModulus, practiceKey));
+    checkAssignment(webGoatUrlConfig.url("crypto/signing/verify"), params, false);
+
     params.clear();
     params.put("modulus", modulus);
     params.put("signature", signature);
-      checkAssignment(webGoatUrlConfig.url("crypto/signing/verify"), params, true);
+    checkAssignment(webGoatUrlConfig.url("crypto/signing/verify"), params, true);
+  }
+
+  private String signingResource(String path) {
+    return RestAssured.given()
+        .when()
+        .relaxedHTTPSValidation()
+        .cookie("JSESSIONID", getWebGoatCookie())
+        .get(webGoatUrlConfig.url(path))
+        .then()
+        .extract()
+        .asString();
   }
 
   private void checkAssignmentDefaults() {

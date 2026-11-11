@@ -11,6 +11,8 @@ function initialise() {
 	$("#md5token").load('crypto/hashing/md5');
 	$("#basicauthtoken").load('crypto/encoding/basic');
 	$("#privatekey").load('crypto/signing/getprivate');
+	$("#publickey").load('crypto/signing/getpublic');
+	$("#serversignature").load('crypto/signing/getsignature');
 }
 $(document).ready(initialise);
 </script>
@@ -85,12 +87,16 @@ $(document).ready(initialise);
 		<!-- 6. assignment -->
 		<div class="attack-container">
 			<div class="assignment-success"><i class="fa fa-2 fa-check hidden" aria-hidden="true"></i></div>
-			Now suppose you have the following private key:<br/>
+			This is the public key the server signs with:<br/>
+			<pre><div id="publickey" ></div></pre><br/>
+			and this is the signature the server made over the hex modulus of that key:<br/>
+			<pre><div id="serversignature" style="white-space: pre-wrap; word-break: break-all;"></div></pre><br/>
+			A practice private key for trying out signing commands (the server does not trust it):<br/>
 			<pre><div id="privatekey" ></div></pre><br/>
 			<form class="attack-form" method="POST" name="form"	th:action="@{/crypto/signing/verify}">
-			Then what was the modulus of the public key
+			What is the modulus of the server's public key
 			<input name="modulus" value="" type="TEXT"/>
-			and now provide a signature for us based on that modulus
+			and, once you have verified it, the server's signature over that modulus
 			<input name="signature" value="" type="TEXT"/>
 			<input name="SUBMIT" value="post the answer" type="SUBMIT"/>
 			</form>
