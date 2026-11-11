@@ -11,7 +11,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
+import org.owasp.webgoat.lessons.webwolfintroduction.WebWolfUniqueCodes;
 import org.springframework.boot.actuate.web.exchanges.HttpExchange;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -65,7 +65,7 @@ public class Requests {
     } else if (req.getUri().getPath().contains("/landing")
         && req.getUri().getQuery() != null
         && req.getUri().getQuery().contains("uniqueCode")
-        && !req.getUri().getQuery().contains(StringUtils.reverse(username))) {
+        && !req.getUri().getQuery().contains(WebWolfUniqueCodes.forUser(username))) {
       allowed = false;
     }
 
