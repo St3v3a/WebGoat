@@ -18,13 +18,27 @@ class MissingFunctionACHiddenMenusTest extends LessonTest {
     mockMvc
         .perform(
             MockMvcRequestBuilders.post("/access-control/hidden-menu")
-                .param("hiddenMenu1", "Users")
-                .param("hiddenMenu2", "Config"))
+                .param("hiddenMenu1", "none")
+                .param("hiddenMenu2", "None"))
         .andExpect(
             jsonPath(
                 "$.feedback",
                 CoreMatchers.is(messages.getMessage("access-control.hidden-menus.success"))))
         .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(true)));
+  }
+
+  @Test
+  void FormerAdminEntriesAreNoLongerAnAnswer() throws Exception {
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/access-control/hidden-menu")
+                .param("hiddenMenu1", "Users")
+                .param("hiddenMenu2", "Config"))
+        .andExpect(
+            jsonPath(
+                "$.feedback",
+                CoreMatchers.is(messages.getMessage("access-control.hidden-menus.close"))))
+        .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
   }
 
   @Test

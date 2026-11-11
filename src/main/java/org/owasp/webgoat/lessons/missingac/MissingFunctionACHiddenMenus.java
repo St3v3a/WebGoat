@@ -28,14 +28,25 @@ public class MissingFunctionACHiddenMenus implements AssignmentEndpoint {
       produces = {"application/json"})
   @ResponseBody
   public AttackResult completed(String hiddenMenu1, String hiddenMenu2) {
-    if (hiddenMenu1.equals("Users") && hiddenMenu2.equals("Config")) {
+    // The administrator entries used to be delivered to every user and hidden with CSS. They are
+    // no longer part of the page a regular user receives, so the former labels are not an answer.
+    if (isNone(hiddenMenu1) && isNone(hiddenMenu2)) {
       return success(this).output("").feedback("access-control.hidden-menus.success").build();
     }
 
-    if (hiddenMenu1.equals("Config") && hiddenMenu2.equals("Users")) {
+    if (isFormerAdminEntry(hiddenMenu1) || isFormerAdminEntry(hiddenMenu2)) {
       return failed(this).output("").feedback("access-control.hidden-menus.close").build();
     }
 
     return failed(this).feedback("access-control.hidden-menus.failure").output("").build();
+  }
+
+  private static boolean isNone(String value) {
+    return value != null && "none".equalsIgnoreCase(value.trim());
+  }
+
+  private static boolean isFormerAdminEntry(String value) {
+    return value != null
+        && ("users".equalsIgnoreCase(value.trim()) || "config".equalsIgnoreCase(value.trim()));
   }
 }

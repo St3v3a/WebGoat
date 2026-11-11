@@ -13,4 +13,4 @@ There are usually hints to finding functionality the UI does not openly expose i
 
 === Your mission
 
-Find two invisible menu items in the menu below that are or would be of interest to an attacker/malicious user and submit the labels for those menu items (there are no links right now in the menus).
+The menu below used to ship its administrator entries to every user and only hid them with a CSS class. They are no longer sent to a regular user's browser. Check that for yourself: inspect the menu markup and submit the labels of any administrator-only items you can still find. If the server sends none, enter `none` in both fields.
