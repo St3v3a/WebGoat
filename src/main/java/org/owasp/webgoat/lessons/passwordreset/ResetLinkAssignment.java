@@ -10,9 +10,9 @@ import static org.springframework.util.StringUtils.hasText;
 
 import com.google.common.collect.Maps;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.owasp.webgoat.container.CurrentUsername;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
@@ -48,7 +48,7 @@ public class ResetLinkAssignment implements AssignmentEndpoint {
   static final String PASSWORD_TOM_9 =
       "somethingVeryRandomWhichNoOneWillEverTypeInAsPasswordForTom";
   static final String TOM_EMAIL = "tom@webgoat-cloud.org";
-  static Map<String, String> userToTomResetLink = new HashMap<>();
+  static Map<String, String> resetLinkToEmail = new ConcurrentHashMap<>();
   static Map<String, String> usersToTomPassword = Maps.newHashMap();
   static List<String> resetLinks = new ArrayList<>();
 
@@ -84,7 +84,7 @@ public class ResetLinkAssignment implements AssignmentEndpoint {
   @GetMapping("/PasswordReset/reset/reset-password/{link}")
   public ModelAndView resetPassword(@PathVariable(value = "link") String link, Model model) {
     ModelAndView modelAndView = new ModelAndView();
-    if (ResetLinkAssignment.resetLinks.contains(link)) {
+    if (resetLinkToEmail.containsKey(link)) {
       PasswordChangeForm form = new PasswordChangeForm();
       form.setResetLink(link);
       model.addAttribute("form", form);
@@ -110,19 +110,18 @@ public class ResetLinkAssignment implements AssignmentEndpoint {
       modelAndView.setViewName(VIEW_FORMATTER.formatted("password_reset"));
       return modelAndView;
     }
-    if (!resetLinks.contains(form.getResetLink())) {
+    String resetLink = form.getResetLink();
+    String targetEmail = resetLink == null ? null : resetLinkToEmail.remove(resetLink);
+    if (targetEmail == null) {
       modelAndView.setViewName(VIEW_FORMATTER.formatted("password_link_not_found"));
       return modelAndView;
     }
-    if (checkIfLinkIsFromTom(form.getResetLink(), username)) {
+    resetLinks.remove(resetLink);
+    if (TOM_EMAIL.equals(targetEmail)) {
       usersToTomPassword.put(username, form.getPassword());
     }
     modelAndView.setViewName(VIEW_FORMATTER.formatted("success"));
     return modelAndView;
   }
 
-  private boolean checkIfLinkIsFromTom(String resetLinkFromForm, String username) {
-    String resetLink = userToTomResetLink.getOrDefault(username, "unknown");
-    return resetLink.equals(resetLinkFromForm);
-  }
 }
