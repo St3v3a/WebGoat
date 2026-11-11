@@ -41,7 +41,7 @@ public class SecurityQuestionAssignmentTest extends LessonTest {
   }
 
   @Test
-  public void twoQuestionsShouldSolveTheAssignment() throws Exception {
+  public void twoQuestionsShouldNotSolveTheAssignment() throws Exception {
     MockHttpSession mocksession = new MockHttpSession();
     mockMvc
         .perform(
@@ -57,9 +57,20 @@ public class SecurityQuestionAssignmentTest extends LessonTest {
                 .param("question", "In what year was your mother born?")
                 .session(mocksession))
         .andExpect(status().isOk())
-        .andExpect(
-            jsonPath("$.feedback", CoreMatchers.is(messages.getMessage("assignment.solved"))))
         .andExpect(jsonPath("$.output", CoreMatchers.notNullValue()))
+        .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
+  }
+
+  @Test
+  public void choosingNoSecurityQuestionSolvesTheAssignment() throws Exception {
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.post("/PasswordReset/SecurityQuestions")
+                .param("question", SecurityQuestionAssignment.NO_SECURITY_QUESTION))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath(
+                "$.feedback", CoreMatchers.is(messages.getMessage("password-questions-none"))))
         .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(true)));
   }
 
@@ -96,7 +107,7 @@ public class SecurityQuestionAssignmentTest extends LessonTest {
     mockMvc
         .perform(
             MockMvcRequestBuilders.post("/PasswordReset/SecurityQuestions")
-                .param("question", "In what year was your mother born?")
+                .param("question", SecurityQuestionAssignment.NO_SECURITY_QUESTION)
                 .session(mocksession))
         .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(true)));
 

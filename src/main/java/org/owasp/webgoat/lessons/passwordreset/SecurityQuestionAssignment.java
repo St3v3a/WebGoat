@@ -4,7 +4,7 @@
  */
 package org.owasp.webgoat.lessons.passwordreset;
 
-import static java.util.Optional.of;
+import static java.util.Optional.ofNullable;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.informationMessage;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.success;
 
@@ -25,6 +25,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 public class SecurityQuestionAssignment implements AssignmentEndpoint {
+
+  /** The only choice that completes the assignment: do not rely on a security question. */
+  static final String NO_SECURITY_QUESTION =
+      "None of these - send a single-use reset link to the registered address";
 
   private final TriedQuestions triedQuestions;
 
@@ -80,13 +84,14 @@ public class SecurityQuestionAssignment implements AssignmentEndpoint {
   @PostMapping("/PasswordReset/SecurityQuestions")
   @ResponseBody
   public AttackResult completed(@RequestParam String question) {
-    var answer = of(questions.get(question));
-    if (answer.isPresent()) {
-      triedQuestions.incr(question);
-      if (triedQuestions.isComplete()) {
-        return success(this).output("<b>" + answer + "</b>").build();
-      }
+    // Looking at two questions used to complete the assignment. Every listed question is weak, so
+    // reviewing them is informational; the assignment completes when the learner picks recovery
+    // that does not depend on a security question.
+    if (NO_SECURITY_QUESTION.equals(question)) {
+      return success(this).feedback("password-questions-none").build();
     }
+    var answer = ofNullable(questions.get(question));
+    answer.ifPresent(a -> triedQuestions.incr(question));
     return informationMessage(this)
         .feedback("password-questions-one-successful")
         .output(answer.orElse("Unknown question, please try again..."))
