@@ -7,12 +7,17 @@ package org.owasp.webgoat.lessons.idor;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.failed;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.success;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.HashMap;
+import java.util.HexFormat;
 import java.util.Map;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
 import org.owasp.webgoat.container.assignments.AttackResult;
 import org.owasp.webgoat.container.session.LessonSession;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -21,6 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @AssignmentHints({"idor.hints.idor_login"})
 public class IDORLogin implements AssignmentEndpoint {
+  static final String DEMO_PASSWORD = "idor-demo-password";
+  private static final SecureRandom RANDOM = new SecureRandom();
+
   private final LessonSession lessonSession;
 
   public IDORLogin(LessonSession lessonSession) {
@@ -32,16 +40,38 @@ public class IDORLogin implements AssignmentEndpoint {
   public void initIDORInfo() {
 
     idorUserInfo.put("tom", new HashMap<String, String>());
-    idorUserInfo.get("tom").put("password", "cat");
     idorUserInfo.get("tom").put("id", "2342384");
     idorUserInfo.get("tom").put("color", "yellow");
     idorUserInfo.get("tom").put("size", "small");
 
     idorUserInfo.put("bill", new HashMap<String, String>());
-    idorUserInfo.get("bill").put("password", "buffalo");
     idorUserInfo.get("bill").put("id", "2342388");
     idorUserInfo.get("bill").put("color", "brown");
     idorUserInfo.get("bill").put("size", "large");
+  }
+
+  /**
+   * Issues the practice password for tom. The account used to share one published password
+   * ("cat") across every learner and deployment; the password is now random, bound to the
+   * learner's lesson session and replaced whenever it is issued again.
+   */
+  @GetMapping(path = "/IDOR/demo-credentials", produces = "application/json")
+  @ResponseBody
+  public Map<String, String> issueDemoCredentials() {
+    byte[] bytes = new byte[9];
+    RANDOM.nextBytes(bytes);
+    String password = HexFormat.of().formatHex(bytes);
+    lessonSession.setValue(DEMO_PASSWORD, password);
+    lessonSession.setValue("idor-authenticated-as", "");
+    return Map.of("username", "tom", "password", password);
+  }
+
+  private boolean isIssuedPassword(String password) {
+    Object issued = lessonSession.getValue(DEMO_PASSWORD);
+    return issued instanceof String expected
+        && password != null
+        && MessageDigest.isEqual(
+            expected.getBytes(StandardCharsets.UTF_8), password.getBytes(StandardCharsets.UTF_8));
   }
 
   @PostMapping("/IDOR/login")
@@ -50,7 +80,7 @@ public class IDORLogin implements AssignmentEndpoint {
     initIDORInfo();
 
     if (idorUserInfo.containsKey(username)) {
-      if ("tom".equals(username) && idorUserInfo.get("tom").get("password").equals(password)) {
+      if ("tom".equals(username) && isIssuedPassword(password)) {
         lessonSession.setValue("idor-authenticated-as", username);
         lessonSession.setValue("idor-authenticated-user-id", idorUserInfo.get(username).get("id"));
         return success(this).feedback("idor.login.success").feedbackArgs(username).build();

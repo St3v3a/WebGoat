@@ -10,6 +10,7 @@ import static org.owasp.webgoat.container.assignments.AttackResultBuilder.succes
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
 import org.owasp.webgoat.container.assignments.AttackResult;
+import org.owasp.webgoat.container.session.LessonSession;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -23,9 +24,19 @@ import org.springframework.web.bind.annotation.RestController;
 })
 public class IDORDiffAttributes implements AssignmentEndpoint {
 
+  private final LessonSession lessonSession;
+
+  public IDORDiffAttributes(LessonSession lessonSession) {
+    this.lessonSession = lessonSession;
+  }
+
   @PostMapping("/IDOR/diff-attributes")
   @ResponseBody
   public AttackResult completed(@RequestParam String attributes) {
+    // The profile whose attributes are compared is only served to a learner who signed in.
+    if (!"tom".equals(lessonSession.getValue("idor-authenticated-as"))) {
+      return failed(this).feedback("idor.view.own.profile.failure2").build();
+    }
     attributes = attributes.trim();
     String[] diffAttribs = attributes.split(",");
     if (diffAttribs.length < 2) {
