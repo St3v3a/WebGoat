@@ -33,7 +33,9 @@ public class SqlInjectionLesson5Test extends LessonTest {
     mockMvc
         .perform(
             MockMvcRequestBuilders.post("/SqlInjection/attack5")
-                .param("query", "grant select on grant_rights to unauthorized_user"))
+                .param("privilege", "select")
+                .param("table", "grant_rights")
+                .param("grantee", "unauthorized_user"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(true)));
   }
@@ -43,7 +45,9 @@ public class SqlInjectionLesson5Test extends LessonTest {
     mockMvc
         .perform(
             MockMvcRequestBuilders.post("/SqlInjection/attack5")
-                .param("query", "grant select on users to unauthorized_user"))
+                .param("privilege", "select")
+                .param("table", "users")
+                .param("grantee", "unauthorized_user"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
   }
@@ -53,7 +57,7 @@ public class SqlInjectionLesson5Test extends LessonTest {
     mockMvc
         .perform(
             MockMvcRequestBuilders.post("/SqlInjection/attack5")
-                .param("query", "select * from grant_rights"))
+                .param("query", "grant select on grant_rights to unauthorized_user"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.lessonCompleted", CoreMatchers.is(false)));
   }

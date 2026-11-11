@@ -1,11 +1,9 @@
 /*
- * SPDX-FileCopyrightText: Copyright © 2018 WebGoat authors
+ * SPDX-FileCopyrightText: Copyright © 2014 WebGoat authors
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
 package org.owasp.webgoat.lessons.sqlinjection.introduction;
 
-import static java.sql.ResultSet.CONCUR_READ_ONLY;
-import static java.sql.ResultSet.TYPE_SCROLL_INSENSITIVE;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.failed;
 import static org.owasp.webgoat.container.assignments.AttackResultBuilder.success;
 
@@ -13,6 +11,8 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
+import java.util.Set;
 import org.owasp.webgoat.container.LessonDataSource;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
@@ -22,10 +22,21 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Data Definition Language exercise.
+ *
+ * <p>The endpoint used to pass the caller's text straight to {@code Statement.executeUpdate},
+ * which allowed any schema change. Identifiers cannot be bound, so the learner now picks the
+ * operation, column and type from fixed lists and the server emits the statement itself.
+ */
 @RestController
 @AssignmentHints(
     value = {"SqlStringInjectionHint4-1", "SqlStringInjectionHint4-2", "SqlStringInjectionHint4-3"})
 public class SqlInjectionLesson4 implements AssignmentEndpoint {
+
+  private static final Set<String> OPERATIONS = Set.of("add", "drop");
+  private static final Set<String> COLUMNS = Set.of("phone");
+  private static final Set<String> TYPES = Set.of("varchar(20)", "int");
 
   private final LessonDataSource dataSource;
 
@@ -35,30 +46,44 @@ public class SqlInjectionLesson4 implements AssignmentEndpoint {
 
   @PostMapping("/SqlInjection/attack4")
   @ResponseBody
-  public AttackResult completed(@RequestParam String query) {
-    return injectableQuery(query);
+  public AttackResult completed(
+      @RequestParam(required = false) String operation,
+      @RequestParam(required = false) String column,
+      @RequestParam(required = false) String type) {
+    if (operation == null || column == null || type == null) {
+      return failed(this).feedback("sql-injection.console.freeform").build();
+    }
+    String op = operation.trim().toLowerCase(Locale.ROOT);
+    String name = column.trim().toLowerCase(Locale.ROOT);
+    String dataType = type.trim().toLowerCase(Locale.ROOT);
+    if (!OPERATIONS.contains(op) || !COLUMNS.contains(name) || !TYPES.contains(dataType)) {
+      return failed(this).feedback("sql-injection.console.identifier").build();
+    }
+    String sql =
+        "add".equals(op)
+            ? "ALTER TABLE employees ADD " + name + " " + dataType
+            : "ALTER TABLE employees DROP COLUMN " + name;
+    return alter(sql);
   }
 
-  protected AttackResult injectableQuery(String query) {
-    try (Connection connection = dataSource.getConnection()) {
-      try (Statement statement =
-          connection.createStatement(TYPE_SCROLL_INSENSITIVE, CONCUR_READ_ONLY)) {
-        statement.executeUpdate(query);
+  private AttackResult alter(String sql) {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+      try {
+        statement.executeUpdate(sql);
         connection.commit();
-        ResultSet results = statement.executeQuery("SELECT phone from employees;");
-        StringBuilder output = new StringBuilder();
-        // user completes lesson if column phone exists
-        if (results.first()) {
-          output.append("<span class='feedback-positive'>" + query + "</span>");
-          return success(this).output(output.toString()).build();
-        } else {
-          return failed(this).output(output.toString()).build();
-        }
-      } catch (SQLException sqle) {
-        return failed(this).output(sqle.getMessage()).build();
+      } catch (SQLException alreadyApplied) {
+        // adding an existing column or dropping a missing one changes nothing
       }
-    } catch (Exception e) {
-      return failed(this).output(this.getClass().getName() + " : " + e.getMessage()).build();
+      // user completes lesson if column phone exists
+      try (ResultSet results = statement.executeQuery("SELECT phone FROM employees")) {
+        results.next();
+        return success(this).output("<span class='feedback-positive'>" + sql + "</span>").build();
+      } catch (SQLException noSuchColumn) {
+        return failed(this).output(sql).build();
+      }
+    } catch (SQLException sqle) {
+      return failed(this).feedback("sql-injection.console.failed").build();
     }
   }
 }

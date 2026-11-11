@@ -10,12 +10,6 @@ import org.junit.jupiter.api.Test;
 
 public class SqlInjectionLessonIntegrationTest extends IntegrationTest {
 
-  public static final String sql_2 = "select department from employees where last_name='Franco'";
-  public static final String sql_3 =
-      "update employees set department='Sales' where last_name='Barnett'";
-  public static final String sql_4_drop = "alter table employees drop column phone";
-  public static final String sql_4_add = "alter table employees add column phone varchar(20)";
-  public static final String sql_5 = "grant select on grant_rights to unauthorized_user";
   public static final String sql_9_account = " ' ";
   public static final String sql_9_operator = "or";
   public static final String sql_9_injection = "'1'='1";
@@ -37,19 +31,28 @@ public class SqlInjectionLessonIntegrationTest extends IntegrationTest {
 
     Map<String, Object> params = new HashMap<>();
     params.clear();
-    params.put("query", sql_2);
+    params.put("column", "department");
+    params.put("filterColumn", "last_name");
+    params.put("value", "Franco");
       checkAssignment(webGoatUrlConfig.url("SqlInjection/attack2"), params, true);
 
     params.clear();
-    params.put("query", sql_3);
+    params.put("column", "department");
+    params.put("newValue", "Sales");
+    params.put("filterColumn", "last_name");
+    params.put("value", "Barnett");
       checkAssignment(webGoatUrlConfig.url("SqlInjection/attack3"), params, true);
 
     params.clear();
-    params.put("query", sql_4_add);
+    params.put("operation", "add");
+    params.put("column", "phone");
+    params.put("type", "varchar(20)");
       checkAssignment(webGoatUrlConfig.url("SqlInjection/attack4"), params, true);
 
     params.clear();
-    params.put("query", sql_5);
+    params.put("privilege", "select");
+    params.put("table", "grant_rights");
+    params.put("grantee", "unauthorized_user");
       checkAssignment(webGoatUrlConfig.url("SqlInjection/attack5"), params, true);
 
     params.clear();

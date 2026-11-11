@@ -9,17 +9,26 @@ import static org.owasp.webgoat.container.assignments.AttackResultBuilder.succes
 
 import jakarta.annotation.PostConstruct;
 import java.sql.Connection;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Locale;
+import java.util.Set;
 import org.owasp.webgoat.container.LessonDataSource;
 import org.owasp.webgoat.container.assignments.AssignmentEndpoint;
 import org.owasp.webgoat.container.assignments.AssignmentHints;
 import org.owasp.webgoat.container.assignments.AttackResult;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Data Control Language exercise.
+ *
+ * <p>The endpoint used to pass the caller's text straight to {@code Statement.executeQuery}, so a
+ * signed-in user could grant or revoke anything the lesson connection could. The learner now
+ * picks the privilege, table and grantee from fixed lists and the server emits the statement.
+ */
 @RestController
 @AssignmentHints(
     value = {
@@ -29,6 +38,10 @@ import org.springframework.web.bind.annotation.RestController;
       "SqlStringInjectionHint5-4"
     })
 public class SqlInjectionLesson5 implements AssignmentEndpoint {
+
+  private static final Set<String> PRIVILEGES = Set.of("select", "insert", "update", "delete");
+  private static final Set<String> TABLES = Set.of("grant_rights");
+  private static final Set<String> GRANTEES = Set.of("unauthorized_user");
 
   private final LessonDataSource dataSource;
 
@@ -52,27 +65,33 @@ public class SqlInjectionLesson5 implements AssignmentEndpoint {
 
   @PostMapping("/SqlInjection/attack5")
   @ResponseBody
-  public AttackResult completed(String query) {
+  public AttackResult completed(
+      @RequestParam(required = false) String privilege,
+      @RequestParam(required = false) String table,
+      @RequestParam(required = false) String grantee) {
     createUser();
-    return injectableQuery(query);
+    if (privilege == null || table == null || grantee == null) {
+      return failed(this).feedback("sql-injection.console.freeform").build();
+    }
+    String right = privilege.trim().toLowerCase(Locale.ROOT);
+    String object = table.trim().toLowerCase(Locale.ROOT);
+    String user = grantee.trim().toLowerCase(Locale.ROOT);
+    if (!PRIVILEGES.contains(right) || !TABLES.contains(object) || !GRANTEES.contains(user)) {
+      return failed(this).feedback("sql-injection.console.identifier").build();
+    }
+    return grant("GRANT " + right + " ON " + object + " TO " + user);
   }
 
-  protected AttackResult injectableQuery(String query) {
-    try (Connection connection = dataSource.getConnection()) {
-      try (Statement statement =
-          connection.createStatement(
-              ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
-        statement.executeQuery(query);
-        if (checkSolution(connection)) {
-          return success(this).build();
-        }
-        return failed(this).output("Your query was: " + query).build();
+  private AttackResult grant(String sql) {
+    try (Connection connection = dataSource.getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      if (checkSolution(connection)) {
+        return success(this).build();
       }
-    } catch (Exception e) {
-      return failed(this)
-          .output(
-              this.getClass().getName() + " : " + e.getMessage() + "<br> Your query was: " + query)
-          .build();
+      return failed(this).output("Your statement was: " + sql).build();
+    } catch (SQLException e) {
+      return failed(this).feedback("sql-injection.console.failed").build();
     }
   }
 

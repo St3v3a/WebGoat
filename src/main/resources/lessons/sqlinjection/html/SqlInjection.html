@@ -19,13 +19,22 @@
               autocomplete="off">
             <table>
                 <tr>
-                    <td><label>SQL query</label></td>
-                    <td width="100%"><input class="form-control" name="query" value="" type="TEXT" placeholder="SQL query"/></td>
+                    <td><label>SELECT</label></td>
+                    <td width="100%"><select class="form-control" name="column"><option>userid</option><option>first_name</option><option>last_name</option><option>department</option></select></td>
+                </tr>
+                <tr>
+                    <td><label>FROM employees WHERE</label></td>
+                    <td width="100%"><select class="form-control" name="filterColumn"><option>first_name</option><option>last_name</option></select></td>
+                </tr>
+                <tr>
+                    <td><label>=</label></td>
+                    <td width="100%"><input class="form-control" name="value" value="" type="TEXT" placeholder="value"/></td>
                 </tr>
                 <tr>
                     <td><button type="SUBMIT">Submit</button></td>
                 </tr>
             </table>
+            <p><small>Statements are composed from these fields and run with bound values; free-form SQL is no longer executed.</small></p>
         </form>
         <div class="attack-feedback"></div>
         <div class="attack-output"></div>
@@ -43,13 +52,26 @@
               autocomplete="off">
             <table>
                 <tr>
-                    <td><label>SQL query</label></td>
-                    <td width="100%"><input class="form-control" name="query" value="" type="TEXT" placeholder="SQL query"/></td>
+                    <td><label>UPDATE employees SET</label></td>
+                    <td width="100%"><select class="form-control" name="column"><option>department</option></select></td>
+                </tr>
+                <tr>
+                    <td><label>=</label></td>
+                    <td width="100%"><input class="form-control" name="newValue" value="" type="TEXT" placeholder="new value"/></td>
+                </tr>
+                <tr>
+                    <td><label>WHERE</label></td>
+                    <td width="100%"><select class="form-control" name="filterColumn"><option>first_name</option><option>last_name</option></select></td>
+                </tr>
+                <tr>
+                    <td><label>=</label></td>
+                    <td width="100%"><input class="form-control" name="value" value="" type="TEXT" placeholder="value"/></td>
                 </tr>
                 <tr>
                     <td><button type="SUBMIT">Submit</button></td>
                 </tr>
             </table>
+            <p><small>Statements are composed from these fields and run with bound values; free-form SQL is no longer executed.</small></p>
         </form>
         <div class="attack-feedback"></div>
         <div class="attack-output"></div>
@@ -67,13 +89,22 @@
               autocomplete="off">
             <table>
                 <tr>
-                    <td><label>SQL query</label></td>
-                    <td width="100%"><input class="form-control" name="query" value="" type="TEXT" placeholder="SQL query"/></td>
+                    <td><label>ALTER TABLE employees</label></td>
+                    <td width="100%"><select class="form-control" name="operation"><option>ADD</option><option>DROP</option></select></td>
+                </tr>
+                <tr>
+                    <td><label>column</label></td>
+                    <td width="100%"><select class="form-control" name="column"><option>phone</option></select></td>
+                </tr>
+                <tr>
+                    <td><label>data type</label></td>
+                    <td width="100%"><select class="form-control" name="type"><option>varchar(20)</option><option>int</option></select></td>
                 </tr>
                 <tr>
                     <td><button type="SUBMIT">Submit</button></td>
                 </tr>
             </table>
+            <p><small>Statements are composed from these fields and run with bound values; free-form SQL is no longer executed.</small></p>
         </form>
         <div class="attack-feedback"></div>
         <div class="attack-output"></div>
@@ -91,13 +122,22 @@
               autocomplete="off">
             <table>
                 <tr>
-                    <td><label>SQL query</label></td>
-                    <td width="100%"><input class="form-control" name="query" value="" type="TEXT" placeholder="SQL query"/></td>
+                    <td><label>GRANT</label></td>
+                    <td width="100%"><select class="form-control" name="privilege"><option>select</option><option>insert</option><option>update</option><option>delete</option></select></td>
+                </tr>
+                <tr>
+                    <td><label>ON</label></td>
+                    <td width="100%"><select class="form-control" name="table"><option>grant_rights</option></select></td>
+                </tr>
+                <tr>
+                    <td><label>TO</label></td>
+                    <td width="100%"><select class="form-control" name="grantee"><option>unauthorized_user</option></select></td>
                 </tr>
                 <tr>
                     <td><button type="SUBMIT">Submit</button></td>
                 </tr>
             </table>
+            <p><small>Statements are composed from these fields and run with bound values; free-form SQL is no longer executed.</small></p>
         </form>
         <div class="attack-feedback"></div>
         <div class="attack-output"></div>
